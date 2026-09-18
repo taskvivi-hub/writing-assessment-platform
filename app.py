@@ -1,19 +1,15 @@
 import os
 import json
-import uuid
 import base64
-from pathlib import Path
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import date
 from io import BytesIO
 
 import streamlit as st
 from openai import OpenAI
 from openpyxl import Workbook
+from supabase import create_client
 
 APP_NAME = "Writing Assessment"
-TASKS_FILE = Path("tasks.json")
-SUBMISSIONS_FILE = Path("submissions.json")
 
 RUBRIC = {
     "Content & Task Fulfillment": {
@@ -43,34 +39,6 @@ RUBRIC = {
 }
 
 
-def read_json(path, default):
-    if path.exists():
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            return default
-    return default
-
-
-def write_json(path, data):
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def load_tasks():
-    return read_json(TASKS_FILE, {})
-
-
-def save_tasks(tasks):
-    write_json(TASKS_FILE, tasks)
-
-
-def load_submissions():
-    return read_json(SUBMISSIONS_FILE, [])
-
-
-def save_submissions(items):
-    write_json(SUBMISSIONS_FILE, items)
-
 
 def secret_or_env(name, default=""):
     try:
@@ -78,6 +46,60 @@ def secret_or_env(name, default=""):
     except Exception:
         value = default
     return value or os.getenv(name, default)
+
+
+@st.cache_resource
+def get_supabase():
+    url = secret_or_env("SUPABASE_URL")
+    key = secret_or_env("SUPABASE_SERVICE_ROLE_KEY")
+    if not url or not key:
+        raise RuntimeError("Supabase is not configured.")
+    return create_client(url, key)
+
+
+def list_tasks():
+    res = get_supabase().table("tasks").select("*").order("created_at", desc=True).execute()
+    return res.data or []
+
+
+def get_task(task_id):
+    res = get_supabase().table("tasks").select("*").eq("id", task_id).limit(1).execute()
+    rows = res.data or []
+    return rows[0] if rows else None
+
+
+def create_task_record(class_name, task_date, title, genre, requirements):
+    payload = {
+        "class_name": class_name.strip(),
+        "task_date": task_date.isoformat(),
+        "title": title.strip(),
+        "genre": genre.strip(),
+        "requirements": requirements.strip(),
+    }
+    res = get_supabase().table("tasks").insert(payload).execute()
+    if not res.data:
+        raise RuntimeError("Task was not saved.")
+    return res.data[0]
+
+
+def update_task_record(task_id, class_name, task_date, title, genre, requirements):
+    payload = {
+        "class_name": class_name.strip(),
+        "task_date": task_date.isoformat(),
+        "title": title.strip(),
+        "genre": genre.strip(),
+        "requirements": requirements.strip(),
+    }
+    get_supabase().table("tasks").update(payload).eq("id", task_id).execute()
+
+
+def delete_task_record(task_id):
+    get_supabase().table("tasks").delete().eq("id", task_id).execute()
+
+
+def list_submissions():
+    res = get_supabase().table("submissions").select("*").order("submitted_at", desc=True).execute()
+    return res.data or []
 
 
 def get_base_url():
@@ -182,17 +204,12 @@ def assess(uploaded_file, task):
     return result
 
 
-def taipei_now():
-    return datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d %H:%M:%S")
 
-
-def save_submission(task_id, task, student_id, student_name, result):
-    submissions = load_submissions()
-    row = {
-        "submission_id": uuid.uuid4().hex,
-        "task_id": task_id,
+def save_submission(task, student_id, student_name, result):
+    payload = {
+        "task_id": task["id"],
         "class_name": task.get("class_name", ""),
-        "task_date": task.get("task_date", ""),
+        "task_date": task.get("task_date"),
         "task_title": task.get("title", ""),
         "genre": task.get("genre", ""),
         "student_id": student_id.strip(),
@@ -202,11 +219,8 @@ def save_submission(task_id, task, student_id, student_name, result):
         "language_score": result["scores"]["Language Use"],
         "genre_score": result["scores"]["Genre & Professional Appropriacy"],
         "total": sum(result["scores"].values()),
-        "submitted_at": taipei_now()
     }
-    submissions.append(row)
-    save_submissions(submissions)
-    return row
+    get_supabase().table("submissions").insert(payload).execute()
 
 
 def build_excel(rows):
@@ -266,123 +280,163 @@ st.markdown('''
 </style>
 ''', unsafe_allow_html=True)
 
-tasks = load_tasks()
+
 task_id = st.query_params.get("task")
 
-if task_id and task_id in tasks:
-    task = tasks[task_id]
-    st.title("Writing Assessment")
-    st.write("Follow the steps below to check your writing.")
-    st.markdown(
-        f'''<div class="taskbox"><b>Class:</b> {task.get("class_name","")}<br>
-        <b>Task Date:</b> {task.get("task_date","")}<br>
-        <b>Task Title:</b> {task["title"]}<br>
-        <b>Genre / Writing Type:</b> {task["genre"]}</div>''',
-        unsafe_allow_html=True
-    )
-    if task.get("requirements"):
-        st.subheader("Task Requirements")
-        st.write(task["requirements"])
+# ---------------------------
+# STUDENT VIEW
+# ---------------------------
+if task_id:
+    try:
+        task = get_task(task_id)
+    except Exception as e:
+        task = None
+        st.error(f"Database connection error: {e}")
 
-    st.subheader("Step 1. Enter your information")
-    student_id = st.text_input("Student ID")
-    student_name = st.text_input("Student Name")
+    if not task:
+        st.title("Writing Assessment")
+        st.error("This task link is not available.")
+    else:
+        st.title("Writing Assessment")
+        st.write("Follow the steps below to check your writing.")
 
-    st.subheader("Step 2. Upload your writing")
-    st.write("Take a clear photo of your writing and upload it here.")
-    uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
+        st.markdown(
+            f'''<div class="taskbox"><b>Class:</b> {task.get("class_name","")}<br>
+            <b>Task Date:</b> {task.get("task_date","")}<br>
+            <b>Task Title:</b> {task["title"]}<br>
+            <b>Genre / Writing Type:</b> {task["genre"]}</div>''',
+            unsafe_allow_html=True
+        )
 
-    st.subheader("Step 3. Submit your writing")
-    if st.button("Submit for Assessment", type="primary", use_container_width=True):
-        if not student_id.strip() or not student_name.strip():
-            st.warning("Please enter your Student ID and Student Name.")
-        elif not uploaded:
-            st.warning("Please upload an image first.")
-        else:
-            with st.spinner("Checking your writing..."):
-                try:
-                    result = assess(uploaded, task)
-                    if not result.get("image_readable", True):
-                        st.error("The image is not clear enough to read. Please upload a clearer photo.")
-                    else:
-                        save_submission(task_id, task, student_id, student_name, result)
-                        st.session_state["result"] = result
-                        st.session_state["show_revision"] = False
-                except Exception as e:
-                    st.error(f"Assessment could not be completed: {e}")
+        if task.get("requirements"):
+            st.subheader("Task Requirements")
+            st.write(task["requirements"])
 
-    result = st.session_state.get("result")
-    if result:
-        st.divider()
-        st.header("Your Writing Score")
-        total = sum(result["scores"][d] for d in RUBRIC)
-        st.markdown(f'<div class="totalbox"><div class="meta">Total Score</div><div class="totalnum">{total} / 16</div></div>', unsafe_allow_html=True)
-        for dim, levels in RUBRIC.items():
-            score = result["scores"][dim]
-            level, desc = levels[score]
-            st.markdown(f'<div class="card"><span class="cardtitle">{dim}</span><span class="score">{score}/4</span><div class="level">{level}</div><div>{desc}</div></div>', unsafe_allow_html=True)
-        if st.button("See Revision Suggestions", use_container_width=True):
-            st.session_state["show_revision"] = True
-        if st.session_state.get("show_revision"):
+        st.subheader("Step 1. Enter your information")
+        student_id = st.text_input("Student ID")
+        student_name = st.text_input("Student Name")
+
+        st.subheader("Step 2. Upload your writing")
+        st.write("Take a clear photo of your writing and upload it here.")
+        uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
+
+        st.subheader("Step 3. Submit your writing")
+        if st.button("Submit for Assessment", type="primary", use_container_width=True):
+            if not student_id.strip() or not student_name.strip():
+                st.warning("Please enter your Student ID and Student Name.")
+            elif not uploaded:
+                st.warning("Please upload an image first.")
+            else:
+                with st.spinner("Checking your writing..."):
+                    try:
+                        result = assess(uploaded, task)
+                        if not result.get("image_readable", True):
+                            st.error("The image is not clear enough to read. Please upload a clearer photo.")
+                        else:
+                            save_submission(task, student_id, student_name, result)
+                            st.session_state["result"] = result
+                            st.session_state["show_revision"] = False
+                    except Exception as e:
+                        st.error(f"Assessment could not be completed: {e}")
+
+        result = st.session_state.get("result")
+        if result:
             st.divider()
-            st.header("Revision Suggestions")
-            st.subheader("Language Corrections")
-            corrections = result.get("corrections", [])
-            if not corrections:
-                st.success("No clear grammar, spelling, or punctuation errors were found.")
-            else:
-                for i, c in enumerate(corrections, 1):
-                    st.markdown(f"**{i}. {c.get('type','Correction')}**")
-                    st.markdown(f"- **Original:** {c.get('original','')}")
-                    st.markdown(f"- **Correction:** {c.get('correction','')}")
-                    st.markdown(f"- **Why:** {c.get('explanation','')}")
-                    st.write("")
-            st.subheader("Content & Organization Suggestions")
-            suggestions = result.get("content_organization_suggestions", [])
-            if suggestions:
-                for s in suggestions[:3]:
-                    st.markdown(f"- {s}")
-            else:
-                st.write("No additional suggestions.")
-            st.info("Revise the errors in your own writing. Do not copy a new essay.")
+            st.header("Your Writing Score")
+            total = sum(result["scores"][d] for d in RUBRIC)
+            st.markdown(
+                f'<div class="totalbox"><div class="meta">Total Score</div><div class="totalnum">{total} / 16</div></div>',
+                unsafe_allow_html=True
+            )
+
+            for dim, levels in RUBRIC.items():
+                score = result["scores"][dim]
+                level, desc = levels[score]
+                st.markdown(
+                    f'<div class="card"><span class="cardtitle">{dim}</span><span class="score">{score}/4</span>'
+                    f'<div class="level">{level}</div><div>{desc}</div></div>',
+                    unsafe_allow_html=True
+                )
+
+            if st.button("See Revision Suggestions", use_container_width=True):
+                st.session_state["show_revision"] = True
+
+            if st.session_state.get("show_revision"):
+                st.divider()
+                st.header("Revision Suggestions")
+                st.subheader("Language Corrections")
+                corrections = result.get("corrections", [])
+                if not corrections:
+                    st.success("No clear grammar, spelling, or punctuation errors were found.")
+                else:
+                    for i, c in enumerate(corrections, 1):
+                        st.markdown(f"**{i}. {c.get('type','Correction')}**")
+                        st.markdown(f"- **Original:** {c.get('original','')}")
+                        st.markdown(f"- **Correction:** {c.get('correction','')}")
+                        st.markdown(f"- **Why:** {c.get('explanation','')}")
+                        st.write("")
+
+                st.subheader("Content & Organization Suggestions")
+                suggestions = result.get("content_organization_suggestions", [])
+                if suggestions:
+                    for s in suggestions[:3]:
+                        st.markdown(f"- {s}")
+                else:
+                    st.write("No additional suggestions.")
+                st.info("Revise the errors in your own writing. Do not copy a new essay.")
+
+# ---------------------------
+# TEACHER VIEW
+# ---------------------------
 else:
     st.title("Writing Assessment")
+
     if teacher_authenticated():
         tab1, tab2 = st.tabs(["Create Task", "Results"])
+
         with tab1:
             st.subheader("Teacher Setup")
             st.write("Create a task and share the student link.")
+
             class_name = st.text_input("Class", placeholder="e.g., English Communication A")
             task_date = st.date_input("Task Date")
             title = st.text_input("Task Title", placeholder="e.g., Use of Learning Resources")
             genre = st.text_input("Genre / Writing Type", placeholder="e.g., Email Body")
             requirements = st.text_area(
                 "Task Requirements",
-                placeholder="1. Explain how you have benefited from these resources.\n2. Give suggestions about what the department can do to encourage students to use them more.",
+                placeholder="1. Explain how you have benefited from these resources.\n"
+                            "2. Give suggestions about what the department can do to encourage students to use them more.",
                 height=120
             )
+
             if st.button("Create Student Link", type="primary", use_container_width=True):
                 if not class_name.strip() or not title.strip() or not genre.strip() or not requirements.strip():
                     st.warning("Please complete Class, Task Title, Genre / Writing Type, and Task Requirements.")
                 else:
-                    code = uuid.uuid4().hex[:10]
-                    tasks[code] = {
-                        "class_name": class_name.strip(),
-                        "task_date": task_date.isoformat(),
-                        "title": title.strip(),
-                        "genre": genre.strip(),
-                        "requirements": requirements.strip()
-                    }
-                    save_tasks(tasks)
-                    st.session_state["created_link"] = student_link(code)
+                    try:
+                        task = create_task_record(class_name, task_date, title, genre, requirements)
+                        st.session_state["created_link"] = student_link(task["id"])
+                        st.success("Task created and saved.")
+                    except Exception as e:
+                        st.error(f"Task could not be created: {e}")
+
             if st.session_state.get("created_link"):
-                st.success("Task created.")
                 st.markdown("**Student Link**")
                 st.code(st.session_state["created_link"])
-            if tasks:
-                st.divider()
-                st.subheader("Created Tasks")
-                for code, task in reversed(list(tasks.items())):
+
+            st.divider()
+            st.subheader("Created Tasks")
+            try:
+                tasks = list_tasks()
+            except Exception as e:
+                tasks = []
+                st.error(f"Tasks could not be loaded: {e}")
+
+            if not tasks:
+                st.info("No tasks yet.")
+            else:
+                for task in tasks:
+                    code = task["id"]
                     with st.container(border=True):
                         st.markdown(f"**{task.get('title','')}**")
                         st.write(f"Class: {task.get('class_name','')}")
@@ -400,31 +454,14 @@ else:
 
                         if st.session_state.get("editing_task_code") == code:
                             st.markdown("### Edit Task")
-                            edit_class = st.text_input(
-                                "Class",
-                                value=task.get("class_name", ""),
-                                key=f"edit_class_{code}"
-                            )
+                            edit_class = st.text_input("Class", value=task.get("class_name", ""), key=f"edit_class_{code}")
                             try:
-                                from datetime import date
-                                current_date = date.fromisoformat(task.get("task_date", ""))
+                                current_date = date.fromisoformat(str(task.get("task_date", "")))
                             except Exception:
-                                current_date = task_date
-                            edit_date = st.date_input(
-                                "Task Date",
-                                value=current_date,
-                                key=f"edit_date_{code}"
-                            )
-                            edit_title = st.text_input(
-                                "Task Title",
-                                value=task.get("title", ""),
-                                key=f"edit_title_{code}"
-                            )
-                            edit_genre = st.text_input(
-                                "Genre / Writing Type",
-                                value=task.get("genre", ""),
-                                key=f"edit_genre_{code}"
-                            )
+                                current_date = date.today()
+                            edit_date = st.date_input("Task Date", value=current_date, key=f"edit_date_{code}")
+                            edit_title = st.text_input("Task Title", value=task.get("title", ""), key=f"edit_title_{code}")
+                            edit_genre = st.text_input("Genre / Writing Type", value=task.get("genre", ""), key=f"edit_genre_{code}")
                             edit_requirements = st.text_area(
                                 "Task Requirements",
                                 value=task.get("requirements", ""),
@@ -438,14 +475,7 @@ else:
                                     if not edit_class.strip() or not edit_title.strip() or not edit_genre.strip() or not edit_requirements.strip():
                                         st.warning("Please complete all task fields.")
                                     else:
-                                        tasks[code] = {
-                                            "class_name": edit_class.strip(),
-                                            "task_date": edit_date.isoformat(),
-                                            "title": edit_title.strip(),
-                                            "genre": edit_genre.strip(),
-                                            "requirements": edit_requirements.strip()
-                                        }
-                                        save_tasks(tasks)
+                                        update_task_record(code, edit_class, edit_date, edit_title, edit_genre, edit_requirements)
                                         st.session_state.pop("editing_task_code", None)
                                         st.success("Task updated.")
                                         st.rerun()
@@ -459,8 +489,7 @@ else:
                             d1, d2 = st.columns(2)
                             with d1:
                                 if st.button("Yes, Delete", key=f"confirm_delete_{code}", use_container_width=True):
-                                    tasks.pop(code, None)
-                                    save_tasks(tasks)
+                                    delete_task_record(code)
                                     st.session_state.pop("deleting_task_code", None)
                                     st.success("Task deleted.")
                                     st.rerun()
@@ -468,15 +497,22 @@ else:
                                 if st.button("Cancel", key=f"cancel_delete_{code}", use_container_width=True):
                                     st.session_state.pop("deleting_task_code", None)
                                     st.rerun()
+
         with tab2:
             st.subheader("Results")
-            submissions = load_submissions()
+            try:
+                submissions = list_submissions()
+            except Exception as e:
+                submissions = []
+                st.error(f"Results could not be loaded: {e}")
+
             if not submissions:
                 st.info("No student submissions yet.")
             else:
                 classes = sorted({r.get("class_name", "") for r in submissions if r.get("class_name", "")})
                 titles = sorted({r.get("task_title", "") for r in submissions if r.get("task_title", "")})
-                dates = sorted({r.get("task_date", "") for r in submissions if r.get("task_date", "")})
+                dates = sorted({str(r.get("task_date", "")) for r in submissions if r.get("task_date", "")})
+
                 c1, c2, c3 = st.columns(3)
                 with c1:
                     class_filter = st.selectbox("Class", ["All"] + classes)
@@ -484,21 +520,35 @@ else:
                     date_filter = st.selectbox("Task Date", ["All"] + dates)
                 with c3:
                     title_filter = st.selectbox("Task Title", ["All"] + titles)
+
                 filtered = []
                 for r in submissions:
-                    if class_filter != "All" and r.get("class_name") != class_filter: continue
-                    if date_filter != "All" and r.get("task_date") != date_filter: continue
-                    if title_filter != "All" and r.get("task_title") != title_filter: continue
+                    if class_filter != "All" and r.get("class_name") != class_filter:
+                        continue
+                    if date_filter != "All" and str(r.get("task_date", "")) != date_filter:
+                        continue
+                    if title_filter != "All" and r.get("task_title") != title_filter:
+                        continue
                     filtered.append(r)
+
                 st.write(f"Submissions: **{len(filtered)}**")
+
                 table_rows = [{
-                    "Class": r.get("class_name", ""), "Task Date": r.get("task_date", ""), "Task Title": r.get("task_title", ""),
-                    "Student ID": r.get("student_id", ""), "Student Name": r.get("student_name", ""),
-                    "Content": r.get("content_score", ""), "Organization": r.get("organization_score", ""),
-                    "Language": r.get("language_score", ""), "Genre": r.get("genre_score", ""),
-                    "Total": r.get("total", ""), "Submitted": r.get("submitted_at", "")
+                    "Class": r.get("class_name", ""),
+                    "Task Date": r.get("task_date", ""),
+                    "Task Title": r.get("task_title", ""),
+                    "Student ID": r.get("student_id", ""),
+                    "Student Name": r.get("student_name", ""),
+                    "Content": r.get("content_score", ""),
+                    "Organization": r.get("organization_score", ""),
+                    "Language": r.get("language_score", ""),
+                    "Genre": r.get("genre_score", ""),
+                    "Total": r.get("total", ""),
+                    "Submitted": r.get("submitted_at", "")
                 } for r in filtered]
+
                 st.dataframe(table_rows, use_container_width=True, hide_index=True)
+
                 if filtered:
                     st.download_button(
                         "Download Results (Excel)",
@@ -507,4 +557,3 @@ else:
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
-                st.warning("Current prototype storage is local to the Streamlit app. For semester-long use, results should be moved to a persistent database before relying on this as the only grade record.")
