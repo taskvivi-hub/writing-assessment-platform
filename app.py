@@ -389,6 +389,85 @@ else:
                         st.write(f"Task Date: {task.get('task_date','')}")
                         st.write(f"Genre / Writing Type: {task.get('genre','')}")
                         st.code(student_link(code))
+
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("Edit Task", key=f"edit_{code}", use_container_width=True):
+                                st.session_state["editing_task_code"] = code
+                        with c2:
+                            if st.button("Delete Task", key=f"delete_{code}", use_container_width=True):
+                                st.session_state["deleting_task_code"] = code
+
+                        if st.session_state.get("editing_task_code") == code:
+                            st.markdown("### Edit Task")
+                            edit_class = st.text_input(
+                                "Class",
+                                value=task.get("class_name", ""),
+                                key=f"edit_class_{code}"
+                            )
+                            try:
+                                from datetime import date
+                                current_date = date.fromisoformat(task.get("task_date", ""))
+                            except Exception:
+                                current_date = task_date
+                            edit_date = st.date_input(
+                                "Task Date",
+                                value=current_date,
+                                key=f"edit_date_{code}"
+                            )
+                            edit_title = st.text_input(
+                                "Task Title",
+                                value=task.get("title", ""),
+                                key=f"edit_title_{code}"
+                            )
+                            edit_genre = st.text_input(
+                                "Genre / Writing Type",
+                                value=task.get("genre", ""),
+                                key=f"edit_genre_{code}"
+                            )
+                            edit_requirements = st.text_area(
+                                "Task Requirements",
+                                value=task.get("requirements", ""),
+                                key=f"edit_req_{code}",
+                                height=120
+                            )
+
+                            s1, s2 = st.columns(2)
+                            with s1:
+                                if st.button("Save Changes", key=f"save_{code}", type="primary", use_container_width=True):
+                                    if not edit_class.strip() or not edit_title.strip() or not edit_genre.strip() or not edit_requirements.strip():
+                                        st.warning("Please complete all task fields.")
+                                    else:
+                                        tasks[code] = {
+                                            "class_name": edit_class.strip(),
+                                            "task_date": edit_date.isoformat(),
+                                            "title": edit_title.strip(),
+                                            "genre": edit_genre.strip(),
+                                            "requirements": edit_requirements.strip()
+                                        }
+                                        save_tasks(tasks)
+                                        st.session_state.pop("editing_task_code", None)
+                                        st.success("Task updated.")
+                                        st.rerun()
+                            with s2:
+                                if st.button("Cancel", key=f"cancel_edit_{code}", use_container_width=True):
+                                    st.session_state.pop("editing_task_code", None)
+                                    st.rerun()
+
+                        if st.session_state.get("deleting_task_code") == code:
+                            st.warning("Delete this task? The student link will stop working. Existing submission records will not be deleted.")
+                            d1, d2 = st.columns(2)
+                            with d1:
+                                if st.button("Yes, Delete", key=f"confirm_delete_{code}", use_container_width=True):
+                                    tasks.pop(code, None)
+                                    save_tasks(tasks)
+                                    st.session_state.pop("deleting_task_code", None)
+                                    st.success("Task deleted.")
+                                    st.rerun()
+                            with d2:
+                                if st.button("Cancel", key=f"cancel_delete_{code}", use_container_width=True):
+                                    st.session_state.pop("deleting_task_code", None)
+                                    st.rerun()
         with tab2:
             st.subheader("Results")
             submissions = load_submissions()
