@@ -1,11 +1,19 @@
-
-import os, json, uuid, base64
+import os
+import json
+import uuid
+import base64
 from pathlib import Path
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from io import BytesIO
+
 import streamlit as st
 from openai import OpenAI
+from openpyxl import Workbook
 
 APP_NAME = "Writing Assessment"
 TASKS_FILE = Path("tasks.json")
+SUBMISSIONS_FILE = Path("submissions.json")
 
 RUBRIC = {
     "Content & Task Fulfillment": {
@@ -34,73 +42,92 @@ RUBRIC = {
     }
 }
 
-def load_tasks():
-    if TASKS_FILE.exists():
+
+def read_json(path, default):
+    if path.exists():
         try:
-            return json.loads(TASKS_FILE.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
-            pass
-    return {}
+            return default
+    return default
+
+
+def write_json(path, data):
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_tasks():
+    return read_json(TASKS_FILE, {})
+
 
 def save_tasks(tasks):
-    TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(TASKS_FILE, tasks)
+
+
+def load_submissions():
+    return read_json(SUBMISSIONS_FILE, [])
+
+
+def save_submissions(items):
+    write_json(SUBMISSIONS_FILE, items)
+
+
+def secret_or_env(name, default=""):
+    try:
+        value = st.secrets.get(name, default)
+    except Exception:
+        value = default
+    return value or os.getenv(name, default)
+
 
 def get_base_url():
-    base = ""
-    try:
-        base = st.secrets.get("APP_BASE_URL", "")
-    except Exception:
-        pass
-    return (base or os.getenv("APP_BASE_URL", "")).rstrip("/")
+    return secret_or_env("APP_BASE_URL", "").rstrip("/")
+
 
 def student_link(task_id):
     base = get_base_url()
     return f"{base}/?task={task_id}" if base else f"?task={task_id}"
+
 
 def image_to_data_url(uploaded_file):
     mime = uploaded_file.type or "image/jpeg"
     b64 = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
-def build_prompt(task_title, genre):
-    return f"""
-You are an English writing assessor.
 
-Teacher settings:
-Task Title: {task_title}
-Genre / Writing Type: {genre}
+def build_prompt(task):
+    requirements = task.get("requirements", "").strip()
+    return f'''You are an English writing assessor. Read the student's uploaded composition carefully.
 
-Score exactly these four dimensions, each with an integer from 1 to 4:
-- Content & Task Fulfillment
-- Organization & Coherence
-- Language Use
-- Genre & Professional Appropriacy
+TEACHER SETTINGS
+Task Title: {task["title"]}
+Genre / Writing Type: {task["genre"]}
+Task Requirements:
+{requirements}
 
-Rules:
+ASSESSMENT RULES
+Evaluate exactly these four dimensions. Give an INTEGER score from 1 to 4 for each:
+1. Content & Task Fulfillment
+2. Organization & Coherence
+3. Language Use
+4. Genre & Professional Appropriacy
+
+Important:
 - No half points.
 - Do not add criteria.
 - Do not double-penalize the same issue.
-- The teacher provides only Task Title and Genre / Writing Type.
-- Do not invent unstated task requirements.
-- For Content & Task Fulfillment, judge relevance, development, support, and fulfillment of the communicative purpose reasonably implied by the title and genre.
+- Judge Content & Task Fulfillment against the stated Task Requirements.
+- Evaluate only the writing the student is required to produce.
+- Some assignments may already provide fixed genre elements outside the student's response, such as a subject line, greeting, opening, closing, or signature.
+- Do NOT penalize a student for omitting any element that is not explicitly required in Task Requirements.
+- If the Genre / Writing Type is "Email Body", evaluate only the body paragraphs for appropriate purpose, organization, tone, audience awareness, and professional/academic appropriacy. Do not require a greeting, closing, or signature.
 - If the image is not readable enough, do not guess.
 
-Then identify genuine errors ONLY in:
-- Grammar
-- Spelling
-- Punctuation
+Then identify genuine errors ONLY in Grammar, Spelling, and Punctuation.
+For each genuine error, provide type, original, correction, and a brief A2-B1 English explanation.
+Do not rewrite the full composition. Preserve the student's intended meaning. Do not list stylistic preferences as grammar errors.
 
-For each error, provide:
-- type
-- original
-- correction
-- brief A2-B1 English explanation
-
-Do not rewrite the full composition.
-Preserve the student's intended meaning.
-
-Finally, provide 1 to 3 brief suggestions about CONTENT and ORGANIZATION only.
-Do not provide a model essay.
+Finally, provide 1 to 3 brief suggestions about CONTENT and ORGANIZATION only. Do not provide a model essay.
 
 Return VALID JSON ONLY:
 {{
@@ -120,46 +147,32 @@ Return VALID JSON ONLY:
       "explanation": "brief explanation"
     }}
   ],
-  "content_organization_suggestions": [
-    "brief suggestion"
-  ]
-}}
-"""
+  "content_organization_suggestions": ["brief suggestion"]
+}}'''
 
-def assess(uploaded_file, task_title, genre):
-    api_key = None
-    model = "gpt-5.6-luna"
-    try:
-        api_key = st.secrets.get("OPENAI_API_KEY", None)
-        model = st.secrets.get("OPENAI_MODEL", model)
-    except Exception:
-        pass
 
-    api_key = api_key or os.getenv("OPENAI_API_KEY")
-    model = os.getenv("OPENAI_MODEL", model)
-
+def assess(uploaded_file, task):
+    api_key = secret_or_env("OPENAI_API_KEY")
+    model = secret_or_env("OPENAI_MODEL", "gpt-5.6-luna")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is not configured.")
 
     client = OpenAI(api_key=api_key)
-
     response = client.responses.create(
         model=model,
         input=[{
             "role": "user",
             "content": [
-                {"type": "input_text", "text": build_prompt(task_title, genre)},
+                {"type": "input_text", "text": build_prompt(task)},
                 {"type": "input_image", "image_url": image_to_data_url(uploaded_file)}
             ]
         }]
     )
-
     raw = response.output_text.strip()
     if raw.startswith("```"):
         raw = raw.strip("`").strip()
         if raw.lower().startswith("json"):
             raw = raw[4:].strip()
-
     result = json.loads(raw)
     for dim in RUBRIC:
         score = int(result["scores"][dim])
@@ -168,20 +181,90 @@ def assess(uploaded_file, task_title, genre):
         result["scores"][dim] = score
     return result
 
-st.set_page_config(page_title=APP_NAME, page_icon="✍️", layout="centered")
 
-st.markdown("""
+def taipei_now():
+    return datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def save_submission(task_id, task, student_id, student_name, result):
+    submissions = load_submissions()
+    row = {
+        "submission_id": uuid.uuid4().hex,
+        "task_id": task_id,
+        "class_name": task.get("class_name", ""),
+        "task_date": task.get("task_date", ""),
+        "task_title": task.get("title", ""),
+        "genre": task.get("genre", ""),
+        "student_id": student_id.strip(),
+        "student_name": student_name.strip(),
+        "content_score": result["scores"]["Content & Task Fulfillment"],
+        "organization_score": result["scores"]["Organization & Coherence"],
+        "language_score": result["scores"]["Language Use"],
+        "genre_score": result["scores"]["Genre & Professional Appropriacy"],
+        "total": sum(result["scores"].values()),
+        "submitted_at": taipei_now()
+    }
+    submissions.append(row)
+    save_submissions(submissions)
+    return row
+
+
+def build_excel(rows):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Writing Results"
+    headers = [
+        "Class", "Task Date", "Task Title", "Genre / Writing Type",
+        "Student ID", "Student Name",
+        "Content & Task Fulfillment", "Organization & Coherence",
+        "Language Use", "Genre & Professional Appropriacy",
+        "Total /16", "Submission Time"
+    ]
+    ws.append(headers)
+    for r in rows:
+        ws.append([
+            r.get("class_name", ""), r.get("task_date", ""), r.get("task_title", ""), r.get("genre", ""),
+            r.get("student_id", ""), r.get("student_name", ""),
+            r.get("content_score", ""), r.get("organization_score", ""),
+            r.get("language_score", ""), r.get("genre_score", ""),
+            r.get("total", ""), r.get("submitted_at", "")
+        ])
+    widths = [18, 12, 28, 20, 16, 18, 24, 24, 16, 30, 12, 22]
+    for i, width in enumerate(widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = width
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    return bio.getvalue()
+
+
+def teacher_authenticated():
+    required = secret_or_env("TEACHER_PASSWORD", "")
+    if not required:
+        st.warning("Teacher password is not configured yet. Add TEACHER_PASSWORD in Streamlit Secrets before using real student data.")
+        return True
+    if st.session_state.get("teacher_ok"):
+        return True
+    st.subheader("Teacher Login")
+    pwd = st.text_input("Password", type="password")
+    if st.button("Log in"):
+        if pwd == required:
+            st.session_state["teacher_ok"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    return False
+
+
+st.set_page_config(page_title=APP_NAME, page_icon="✍️", layout="centered")
+st.markdown('''
 <style>
-.block-container{max-width:860px;padding-top:2rem;padding-bottom:4rem}
+.block-container{max-width:900px;padding-top:2rem;padding-bottom:4rem}
 .taskbox,.card,.totalbox{border:1px solid rgba(120,120,120,.28);border-radius:14px;padding:1rem 1.1rem;margin:.7rem 0}
-.totalbox{text-align:center;border-width:2px}
-.totalnum{font-size:2.2rem;font-weight:800}
-.cardtitle{font-size:1.05rem;font-weight:700}
-.score{float:right;font-weight:800}
-.level{font-weight:700;margin-top:.35rem}
-.muted{opacity:.7}
+.totalbox{text-align:center;border-width:2px}.totalnum{font-size:2.2rem;font-weight:800}
+.cardtitle{font-size:1.05rem;font-weight:700}.score{float:right;font-weight:800}.level{font-weight:700;margin-top:.35rem}.meta{opacity:.75}
 </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
 tasks = load_tasks()
 task_id = st.query_params.get("task")
@@ -190,27 +273,39 @@ if task_id and task_id in tasks:
     task = tasks[task_id]
     st.title("Writing Assessment")
     st.write("Follow the steps below to check your writing.")
-
     st.markdown(
-        f'<div class="taskbox"><b>Task Title:</b> {task["title"]}<br><b>Genre / Writing Type:</b> {task["genre"]}</div>',
+        f'''<div class="taskbox"><b>Class:</b> {task.get("class_name","")}<br>
+        <b>Task Date:</b> {task.get("task_date","")}<br>
+        <b>Task Title:</b> {task["title"]}<br>
+        <b>Genre / Writing Type:</b> {task["genre"]}</div>''',
         unsafe_allow_html=True
     )
+    if task.get("requirements"):
+        st.subheader("Task Requirements")
+        st.write(task["requirements"])
 
-    st.subheader("Step 1. Upload your writing")
+    st.subheader("Step 1. Enter your information")
+    student_id = st.text_input("Student ID")
+    student_name = st.text_input("Student Name")
+
+    st.subheader("Step 2. Upload your writing")
     st.write("Take a clear photo of your writing and upload it here.")
-    uploaded = st.file_uploader("Choose an image", type=["jpg","jpeg","png","webp"])
+    uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
 
-    st.subheader("Step 2. Submit your writing")
+    st.subheader("Step 3. Submit your writing")
     if st.button("Submit for Assessment", type="primary", use_container_width=True):
-        if not uploaded:
+        if not student_id.strip() or not student_name.strip():
+            st.warning("Please enter your Student ID and Student Name.")
+        elif not uploaded:
             st.warning("Please upload an image first.")
         else:
             with st.spinner("Checking your writing..."):
                 try:
-                    result = assess(uploaded, task["title"], task["genre"])
+                    result = assess(uploaded, task)
                     if not result.get("image_readable", True):
                         st.error("The image is not clear enough to read. Please upload a clearer photo.")
                     else:
+                        save_submission(task_id, task, student_id, student_name, result)
                         st.session_state["result"] = result
                         st.session_state["show_revision"] = False
                 except Exception as e:
@@ -221,24 +316,17 @@ if task_id and task_id in tasks:
         st.divider()
         st.header("Your Writing Score")
         total = sum(result["scores"][d] for d in RUBRIC)
-        st.markdown(f'<div class="totalbox"><div class="muted">Total Score</div><div class="totalnum">{total} / 16</div></div>', unsafe_allow_html=True)
-
+        st.markdown(f'<div class="totalbox"><div class="meta">Total Score</div><div class="totalnum">{total} / 16</div></div>', unsafe_allow_html=True)
         for dim, levels in RUBRIC.items():
             score = result["scores"][dim]
             level, desc = levels[score]
-            st.markdown(
-                f'<div class="card"><span class="cardtitle">{dim}</span><span class="score">{score}/4</span><div class="level">{level}</div><div>{desc}</div></div>',
-                unsafe_allow_html=True
-            )
-
+            st.markdown(f'<div class="card"><span class="cardtitle">{dim}</span><span class="score">{score}/4</span><div class="level">{level}</div><div>{desc}</div></div>', unsafe_allow_html=True)
         if st.button("See Revision Suggestions", use_container_width=True):
             st.session_state["show_revision"] = True
-
         if st.session_state.get("show_revision"):
             st.divider()
             st.header("Revision Suggestions")
             st.subheader("Language Corrections")
-
             corrections = result.get("corrections", [])
             if not corrections:
                 st.success("No clear grammar, spelling, or punctuation errors were found.")
@@ -249,7 +337,6 @@ if task_id and task_id in tasks:
                     st.markdown(f"- **Correction:** {c.get('correction','')}")
                     st.markdown(f"- **Why:** {c.get('explanation','')}")
                     st.write("")
-
             st.subheader("Content & Organization Suggestions")
             suggestions = result.get("content_organization_suggestions", [])
             if suggestions:
@@ -257,36 +344,88 @@ if task_id and task_id in tasks:
                     st.markdown(f"- {s}")
             else:
                 st.write("No additional suggestions.")
-
             st.info("Revise the errors in your own writing. Do not copy a new essay.")
-
 else:
     st.title("Writing Assessment")
-    st.subheader("Teacher Setup")
-    st.write("Create a task and share the student link.")
-
-    title = st.text_input("Task Title", placeholder="e.g., Use of Learning Resources")
-    genre = st.text_input("Genre / Writing Type", placeholder="e.g., Email")
-
-    if st.button("Create Student Link", type="primary", use_container_width=True):
-        if not title.strip() or not genre.strip():
-            st.warning("Please enter both Task Title and Genre / Writing Type.")
-        else:
-            code = uuid.uuid4().hex[:10]
-            tasks[code] = {"title": title.strip(), "genre": genre.strip()}
-            save_tasks(tasks)
-            st.session_state["created_link"] = student_link(code)
-
-    if st.session_state.get("created_link"):
-        st.success("Task created.")
-        st.markdown("**Student Link**")
-        st.code(st.session_state["created_link"])
-
-    if tasks:
-        st.divider()
-        st.subheader("Created Tasks")
-        for code, task in reversed(list(tasks.items())):
-            with st.container(border=True):
-                st.markdown(f"**{task['title']}**")
-                st.write(f"Genre / Writing Type: {task['genre']}")
-                st.code(student_link(code))
+    if teacher_authenticated():
+        tab1, tab2 = st.tabs(["Create Task", "Results"])
+        with tab1:
+            st.subheader("Teacher Setup")
+            st.write("Create a task and share the student link.")
+            class_name = st.text_input("Class", placeholder="e.g., English Communication A")
+            task_date = st.date_input("Task Date")
+            title = st.text_input("Task Title", placeholder="e.g., Use of Learning Resources")
+            genre = st.text_input("Genre / Writing Type", placeholder="e.g., Email Body")
+            requirements = st.text_area(
+                "Task Requirements",
+                placeholder="1. Explain how you have benefited from these resources.\n2. Give suggestions about what the department can do to encourage students to use them more.",
+                height=120
+            )
+            if st.button("Create Student Link", type="primary", use_container_width=True):
+                if not class_name.strip() or not title.strip() or not genre.strip() or not requirements.strip():
+                    st.warning("Please complete Class, Task Title, Genre / Writing Type, and Task Requirements.")
+                else:
+                    code = uuid.uuid4().hex[:10]
+                    tasks[code] = {
+                        "class_name": class_name.strip(),
+                        "task_date": task_date.isoformat(),
+                        "title": title.strip(),
+                        "genre": genre.strip(),
+                        "requirements": requirements.strip()
+                    }
+                    save_tasks(tasks)
+                    st.session_state["created_link"] = student_link(code)
+            if st.session_state.get("created_link"):
+                st.success("Task created.")
+                st.markdown("**Student Link**")
+                st.code(st.session_state["created_link"])
+            if tasks:
+                st.divider()
+                st.subheader("Created Tasks")
+                for code, task in reversed(list(tasks.items())):
+                    with st.container(border=True):
+                        st.markdown(f"**{task.get('title','')}**")
+                        st.write(f"Class: {task.get('class_name','')}")
+                        st.write(f"Task Date: {task.get('task_date','')}")
+                        st.write(f"Genre / Writing Type: {task.get('genre','')}")
+                        st.code(student_link(code))
+        with tab2:
+            st.subheader("Results")
+            submissions = load_submissions()
+            if not submissions:
+                st.info("No student submissions yet.")
+            else:
+                classes = sorted({r.get("class_name", "") for r in submissions if r.get("class_name", "")})
+                titles = sorted({r.get("task_title", "") for r in submissions if r.get("task_title", "")})
+                dates = sorted({r.get("task_date", "") for r in submissions if r.get("task_date", "")})
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    class_filter = st.selectbox("Class", ["All"] + classes)
+                with c2:
+                    date_filter = st.selectbox("Task Date", ["All"] + dates)
+                with c3:
+                    title_filter = st.selectbox("Task Title", ["All"] + titles)
+                filtered = []
+                for r in submissions:
+                    if class_filter != "All" and r.get("class_name") != class_filter: continue
+                    if date_filter != "All" and r.get("task_date") != date_filter: continue
+                    if title_filter != "All" and r.get("task_title") != title_filter: continue
+                    filtered.append(r)
+                st.write(f"Submissions: **{len(filtered)}**")
+                table_rows = [{
+                    "Class": r.get("class_name", ""), "Task Date": r.get("task_date", ""), "Task Title": r.get("task_title", ""),
+                    "Student ID": r.get("student_id", ""), "Student Name": r.get("student_name", ""),
+                    "Content": r.get("content_score", ""), "Organization": r.get("organization_score", ""),
+                    "Language": r.get("language_score", ""), "Genre": r.get("genre_score", ""),
+                    "Total": r.get("total", ""), "Submitted": r.get("submitted_at", "")
+                } for r in filtered]
+                st.dataframe(table_rows, use_container_width=True, hide_index=True)
+                if filtered:
+                    st.download_button(
+                        "Download Results (Excel)",
+                        data=build_excel(filtered),
+                        file_name="writing_results.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                st.warning("Current prototype storage is local to the Streamlit app. For semester-long use, results should be moved to a persistent database before relying on this as the only grade record.")
