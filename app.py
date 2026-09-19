@@ -542,9 +542,9 @@ if task_id:
         st.caption("Use your real name. Each student can submit this task only once.")
         info_c1, info_c2, info_c3 = st.columns([1, 2.2, 2.2])
         with info_c1:
-            seat_number = st.text_input("Seat No.", max_chars=2, placeholder="e.g., 8")
+            seat_number = st.text_input("Seat No.", max_chars=2, placeholder="e.g., 1 or 12")
         with info_c2:
-            student_id = st.text_input("Student ID", max_chars=9)
+            student_id = st.text_input("Student ID", max_chars=9, placeholder="9 characters")
         with info_c3:
             student_name = st.text_input("Student Name")
 
@@ -556,8 +556,10 @@ if task_id:
         if st.button("Submit for Assessment", type="primary", use_container_width=True):
             if not seat_number.strip() or not student_id.strip() or not student_name.strip():
                 st.warning("Please enter your Seat No., Student ID, and Student Name.")
-            elif not seat_number.strip().isdigit():
-                st.warning("Seat No. must contain 1 or 2 digits.")
+            elif not (seat_number.strip().isascii() and seat_number.strip().isdigit() and 1 <= len(seat_number.strip()) <= 2):
+                st.warning("Seat No. must be 1 or 2 digits, for example 1, 2, or 12.")
+            elif len(student_id.strip()) != 9:
+                st.warning("Student ID must contain exactly 9 characters. Letters and numbers are both accepted.")
             elif not uploaded:
                 st.warning("Please upload an image first.")
             else:
