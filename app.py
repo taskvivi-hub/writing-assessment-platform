@@ -291,18 +291,24 @@ Evaluate exactly these four dimensions. Give an INTEGER score from 1 to 4 for ea
 4. Genre & Professional Appropriacy
 
 SCORING CALIBRATION
-- Apply the rubric conservatively and distinguish clearly between scores 2, 3, and 4.
-- A score of 3 means the response clearly meets the score-3 descriptor overall. Do not give 3 simply because the student attempted the task or the meaning is understandable.
-- A score of 4 should be reserved for writing that clearly satisfies the score-4 descriptor, not merely writing that is generally successful.
-- For Content & Task Fulfillment, basic reasons with little explanation, thin development, repetitive support, or insufficient detail should normally fall under score 2 rather than score 3.
-- For Organization & Coherence, a sequence of understandable sentences is not by itself enough for score 3. Score 3 requires generally clear progression and logical connections among ideas.
-- For Language Use, consider the frequency and seriousness of errors relative to the length of the response. Frequent grammatical or wording errors should not receive score 3 merely because the overall meaning can still be understood.
-- For Genre & Professional Appropriacy, judge only the genre features the student is actually required to produce.
+- Score each dimension by matching the student's actual performance to the closest official descriptor.
+- Do NOT deliberately score generously or harshly.
+- Do NOT lower a score merely because the writing is simple or written by an A2-B1 learner.
+- Do NOT raise a score merely because the response is understandable or attempts the task.
+- A score of 1 is appropriate only when the score-1 descriptor is genuinely the closest match.
+- A score of 2 is appropriate when there is partial control, limited development, inconsistent organization, limited language range, or frequent errors as described in the rubric.
+- A score of 3 is appropriate when the score-3 descriptor is genuinely met overall.
+- A score of 4 is appropriate only when the score-4 descriptor is genuinely met overall.
+- Judge every dimension independently. One weak dimension must not automatically lower the others.
+- Do not double-penalize language errors under Content, Organization, or Genre unless those errors actually affect that dimension.
+- For Content & Task Fulfillment, focus on whether the required points are addressed and sufficiently developed.
+- For Organization & Coherence, focus on sequencing, paragraphing, progression, and logical connections. Simple writing can still earn 2 or 3 if its organization matches those descriptors.
+- For Language Use, consider range, accuracy, and how much errors affect clarity. Frequent errors can still be score 2 when the main meaning remains understandable.
+- For Genre & Professional Appropriacy, focus on purpose, tone, audience awareness, format, and genre conventions actually required by the task.
 
-Important:
+IMPORTANT TASK RULES
 - No half points.
 - Do not add criteria.
-- Do not double-penalize the same issue.
 - Judge Content & Task Fulfillment against the stated Task Requirements.
 - Evaluate only the writing the student is required to produce.
 - Some assignments may already provide fixed genre elements outside the student's response, such as a subject line, greeting, opening, closing, or signature.
@@ -310,31 +316,56 @@ Important:
 - If the Genre / Writing Type is "Email Body", evaluate only the body paragraphs for appropriate purpose, organization, tone, audience awareness, and professional/academic appropriacy. Do not require a greeting, closing, or signature.
 - If the image is not readable enough, do not guess.
 
-Then identify genuine errors ONLY in Grammar, Spelling, and Punctuation.
-For each genuine error, provide type, original, correction, and a brief A2-B1 English explanation.
-Do not rewrite the full composition. Preserve the student's intended meaning. Do not list stylistic preferences as grammar errors.
+LANGUAGE CORRECTIONS
+Identify ALL clear, genuine errors in these three categories:
+- Grammar
+- Spelling
+- Punctuation
 
-Finally, provide 1 to 3 brief suggestions about CONTENT and ORGANIZATION only. Do not provide a model essay.
+Do not impose an artificial maximum number of corrections. If there are many genuine errors, list all of them.
+For every error:
+- identify the category,
+- quote the student's original wording,
+- give the corrected wording,
+- give one short Traditional Chinese explanation.
+Do not rewrite the full composition.
+Preserve the student's intended meaning.
+Do not list style preferences as errors.
+Do not invent errors when the original wording is acceptable.
 
-Return VALID JSON ONLY:
+CONTENT & ORGANIZATION REVISION
+Provide 1 to 3 useful revision suggestions about CONTENT and ORGANIZATION only.
+For each suggestion, provide:
+- a short A2-B1 English suggestion,
+- a clear Traditional Chinese translation.
+Do not provide a model essay.
+
+Return VALID JSON ONLY.
+The values "<score 1-4>" below are placeholders. Replace each one with the student's actual integer score.
+
 {{
   "image_readable": true,
   "transcription": "faithful transcription",
   "scores": {{
-    "Content & Task Fulfillment": 1,
-    "Organization & Coherence": 1,
-    "Language Use": 1,
-    "Genre & Professional Appropriacy": 1
+    "Content & Task Fulfillment": "<score 1-4>",
+    "Organization & Coherence": "<score 1-4>",
+    "Language Use": "<score 1-4>",
+    "Genre & Professional Appropriacy": "<score 1-4>"
   }},
   "corrections": [
     {{
       "type": "Grammar",
       "original": "student text",
       "correction": "corrected text",
-      "explanation": "brief explanation"
+      "explanation_zh": "簡短的繁體中文說明"
     }}
   ],
-  "content_organization_suggestions": ["brief suggestion"]
+  "content_organization_suggestions": [
+    {{
+      "en": "short A2-B1 English suggestion",
+      "zh": "清楚的繁體中文翻譯"
+    }}
+  ]
 }}"""
 
 
@@ -551,25 +582,41 @@ if task_id:
             if st.session_state.get("show_revision"):
                 st.divider()
                 st.header("Revision Suggestions")
+
+                st.subheader("Content & Organization Suggestions")
+                suggestions = result.get("content_organization_suggestions", [])
+                if suggestions:
+                    for i, s in enumerate(suggestions, 1):
+                        if isinstance(s, dict):
+                            en = s.get("en", "")
+                            zh = s.get("zh", "")
+                            st.markdown(f"**{i}. {en}**")
+                            if zh:
+                                st.markdown(f"{zh}")
+                        else:
+                            st.markdown(f"**{i}. {s}**")
+                        st.write("")
+                else:
+                    st.write("No additional suggestions.")
+
                 st.subheader("Language Corrections")
+                st.caption("Grammar • Spelling • Punctuation")
                 corrections = result.get("corrections", [])
                 if not corrections:
                     st.success("No clear grammar, spelling, or punctuation errors were found.")
                 else:
                     for i, c in enumerate(corrections, 1):
-                        st.markdown(f"**{i}. {c.get('type','Correction')}**")
-                        st.markdown(f"- **Original:** {c.get('original','')}")
-                        st.markdown(f"- **Correction:** {c.get('correction','')}")
-                        st.markdown(f"- **Why:** {c.get('explanation','')}")
+                        error_type = c.get("type", "Correction")
+                        original = c.get("original", "")
+                        correction = c.get("correction", "")
+                        explanation_zh = c.get("explanation_zh", c.get("explanation", ""))
+                        st.markdown(f"**{i}. {error_type}**")
+                        st.markdown(f"- **Original:** {original}")
+                        st.markdown(f"- **Correction:** {correction}")
+                        if explanation_zh:
+                            st.markdown(f"- **說明：** {explanation_zh}")
                         st.write("")
 
-                st.subheader("Content & Organization Suggestions")
-                suggestions = result.get("content_organization_suggestions", [])
-                if suggestions:
-                    for s in suggestions[:3]:
-                        st.markdown(f"- {s}")
-                else:
-                    st.write("No additional suggestions.")
                 st.info("Revise the errors in your own writing. Do not copy a new essay.")
 
 # ---------------------------
