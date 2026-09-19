@@ -298,20 +298,28 @@ Use these descriptors exactly as the basis for scoring. Every dimension is evalu
 
 {rubric_text}
 
-CORE SCORING PRINCIPLE: TASK FIRST
-Before assigning any score, identify:
-1. the topic and communicative purpose of the task,
-2. every explicit requirement in Task Requirements,
-3. the expected genre and audience.
-Then evaluate ALL FOUR dimensions in relation to that assigned task.
+CORE SCORING PRINCIPLE: DYNAMIC TASK ANCHORING
+The Teacher Settings above are the ONLY task-specific source for this assessment. Do not assume any fixed topic, genre, audience, or required idea from previous tasks or examples.
 
-Do NOT treat Content as the only task-dependent dimension. Organization, Language Use, and Genre must also be judged by how effectively they organize, express, and realize the CONTENT AND PURPOSE required by this task.
+Before assigning any score, derive the current assessment target from THIS task only:
+1. Task Title = the current topic/context.
+2. Task Requirements = the required content, ideas, examples, explanations, length, and other explicit instructions.
+3. Genre / Writing Type = the expected communicative purpose, organization, tone, audience awareness, and conventions.
+
+Then evaluate ALL FOUR dimensions against this dynamically derived task target.
+
+Do NOT treat Content as the only task-dependent dimension. Organization, Language Use, and Genre must also be judged by how effectively the student organizes, expresses, and realizes the CURRENT task content and communicative purpose.
+
+GENERALIZATION RULE
+- Never hard-code or carry over a topic, keyword, example, genre expectation, or audience from another assignment.
+- If the teacher creates a different task later, all four scores must automatically be recalibrated to that new Task Title, Task Requirements, and Genre / Writing Type.
+- A response that would be strong for a different assignment can still receive a low score here if it does not perform THIS assignment.
 
 TASK-RELEVANCE GATE
-Classify the response first:
-- STRONGLY ON TASK: most or all required content is addressed.
-- PARTLY ON TASK: some required content is meaningfully addressed, but important parts are missing or underdeveloped.
-- MINIMALLY ON TASK / LARGELY OFF TOPIC: the response mostly discusses unrelated material, only mentions isolated task words, or fails to carry out the assigned purpose.
+Classify the response against the CURRENT Teacher Settings first:
+- STRONGLY ON TASK: most or all current requirements are meaningfully addressed.
+- PARTLY ON TASK: some current requirements are meaningfully addressed, but important required content is missing or underdeveloped.
+- MINIMALLY ON TASK / LARGELY OFF TOPIC: the response mostly discusses material unrelated to the current requirements, merely repeats isolated words from the current prompt, or fails to carry out the current communicative purpose.
 
 If the response is MINIMALLY ON TASK / LARGELY OFF TOPIC:
 - Content should normally be 1.
@@ -360,11 +368,12 @@ Genre & Professional Appropriacy:
 
 FINAL SCORE CHECK
 Before returning the JSON, verify:
-- Is each score based on THIS task rather than on general writing ability?
-- Would the score still make sense if the Task Title and Task Requirements were shown beside it?
+- Did you use only the CURRENT Task Title, Task Requirements, and Genre / Writing Type to define what counts as successful performance?
+- Is each score based on THIS task rather than on general writing ability or a previous assignment?
+- Would each score still make sense if the current Teacher Settings were shown beside it?
 - Have unrelated but grammatical sentences been prevented from inflating Organization or Language?
 - Have frequent grammar, spelling, punctuation, and capitalization errors been reflected in Language Use?
-- Does Genre reflect the actual assigned communicative purpose?
+- Does Genre reflect the current assigned communicative purpose rather than generic paragraph-writing conventions?
 
 IMPORTANT TASK RULES
 - No half points.
