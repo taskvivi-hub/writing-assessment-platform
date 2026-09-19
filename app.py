@@ -340,9 +340,36 @@ SCORING CALIBRATION
 - Do NOT deliberately score generously or harshly.
 - A score of 1 is appropriate when the student fails to perform that dimension adequately for the assigned task.
 - A score of 2 is appropriate for partial, limited, inconsistent, or weak task performance.
-- A score of 3 is appropriate only when the score-3 descriptor is genuinely met for the assigned task.
-- A score of 4 is appropriate only when the score-4 descriptor is genuinely met for the assigned task.
+- A score of 3 represents solid, generally successful performance: the main task is completed, development and control are adequate, but the writing may still be simple, uneven, limited, or contain noticeable weaknesses.
+- A score of 4 is NOT the default for a complete response. It represents clearly stronger performance than score 3 and requires the score-4 descriptor to be fully and consistently demonstrated.
+- Completing every listed requirement does NOT automatically justify score 4.
+- If a response is mainly simple listing, thin explanation, basic development, predictable structure, limited language range, or has repeated noticeable errors, the relevant dimension should normally remain at 3 or below.
+- When deciding between 3 and 4, choose 4 only when there is clear positive evidence of fuller development, stronger control, effective organization, and/or broader, more precise task-appropriate language as required by that dimension.
 - Do not automatically give the same score to all four dimensions. Judge each dimension separately, but always within the same task context.
+
+HIGH-SCORE GATE: CHECK BEFORE ANY SCORE OF 4
+Before assigning 4 in any dimension, ask whether the response is clearly stronger than an adequate score-3 response for THIS task. If the answer is uncertain, assign 3 rather than 4.
+
+For Content = 4:
+- All important requirements must be addressed, not merely mentioned.
+- Ideas must be sufficiently developed with specific, relevant support, explanation, examples, or details.
+- A basic response that simply covers each required point without meaningful development is normally 3, not 4.
+
+For Organization = 4:
+- Organization must be consistently effective, not merely understandable.
+- Ideas must progress logically and connections/transitions must actively support the task message.
+- A straightforward list or simple sequence with weak or mechanical connections is normally 3 or below.
+
+For Language = 4:
+- The response must show an effective range of task-appropriate vocabulary and sentence structures, not just grammatical comprehensibility.
+- Word choice should be generally precise and errors should be genuinely minor and infrequent.
+- Repeated grammar, wording, spelling, punctuation, capitalization, agreement, article, tense, or sentence-structure errors are incompatible with score 4.
+- If several noticeable language errors recur across the response, score 3 or below even if meaning remains clear.
+
+For Genre = 4:
+- The response must consistently fulfill the assigned communicative purpose and genre conventions for the current task.
+- Tone, organization, format, audience awareness, and purpose should be consistently appropriate.
+- Merely using the expected format or broadly matching the genre is normally 3, not 4, unless control is consistently strong.
 
 DIMENSION CHECKS
 Content & Task Fulfillment:
@@ -373,6 +400,8 @@ Before returning the JSON, verify:
 - Would each score still make sense if the current Teacher Settings were shown beside it?
 - Have unrelated but grammatical sentences been prevented from inflating Organization or Language?
 - Have frequent grammar, spelling, punctuation, and capitalization errors been reflected in Language Use?
+- For every score of 4, is there clear evidence that the performance is stronger than score 3, rather than merely complete or understandable?
+- Have simple listing, thin development, predictable organization, limited language range, or repeated noticeable errors prevented unjustified 4s?
 - Does Genre reflect the current assigned communicative purpose rather than generic paragraph-writing conventions?
 
 IMPORTANT TASK RULES
