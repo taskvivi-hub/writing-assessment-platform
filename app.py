@@ -7,7 +7,7 @@ from io import BytesIO
 import streamlit as st
 from openai import OpenAI
 from openpyxl import Workbook
-from supabase import create_client
+import requests
 
 APP_NAME = "Writing Assessment"
 
@@ -48,23 +48,63 @@ def secret_or_env(name, default=""):
     return value or os.getenv(name, default)
 
 
-@st.cache_resource
-def get_supabase():
-    url = secret_or_env("SUPABASE_URL")
+def get_supabase_config():
+    url = secret_or_env("SUPABASE_URL").rstrip("/")
     key = secret_or_env("SUPABASE_SERVICE_ROLE_KEY")
     if not url or not key:
         raise RuntimeError("Supabase is not configured.")
-    return create_client(url, key)
+    return url, key
+
+
+def supabase_request(method, table, *, params=None, json_body=None, prefer=None):
+    url, key = get_supabase_config()
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    if prefer:
+        headers["Prefer"] = prefer
+
+    response = requests.request(
+        method,
+        f"{url}/rest/v1/{table}",
+        headers=headers,
+        params=params,
+        json=json_body,
+        timeout=30,
+    )
+
+    if not response.ok:
+        detail = response.text.strip()
+        raise RuntimeError(
+            f"Supabase request failed ({response.status_code}). "
+            f"{detail[:500]}"
+        )
+
+    if not response.content:
+        return []
+    try:
+        return response.json()
+    except ValueError:
+        return []
 
 
 def list_tasks():
-    res = get_supabase().table("tasks").select("*").order("created_at", desc=True).execute()
-    return res.data or []
+    rows = supabase_request(
+        "GET",
+        "tasks",
+        params={"select": "*", "order": "created_at.desc"},
+    )
+    return rows or []
 
 
 def get_task(task_id):
-    res = get_supabase().table("tasks").select("*").eq("id", task_id).limit(1).execute()
-    rows = res.data or []
+    rows = supabase_request(
+        "GET",
+        "tasks",
+        params={"select": "*", "id": f"eq.{task_id}", "limit": "1"},
+    )
     return rows[0] if rows else None
 
 
@@ -76,10 +116,15 @@ def create_task_record(class_name, task_date, title, genre, requirements):
         "genre": genre.strip(),
         "requirements": requirements.strip(),
     }
-    res = get_supabase().table("tasks").insert(payload).execute()
-    if not res.data:
+    rows = supabase_request(
+        "POST",
+        "tasks",
+        json_body=payload,
+        prefer="return=representation",
+    )
+    if not rows:
         raise RuntimeError("Task was not saved.")
-    return res.data[0]
+    return rows[0]
 
 
 def update_task_record(task_id, class_name, task_date, title, genre, requirements):
@@ -90,17 +135,31 @@ def update_task_record(task_id, class_name, task_date, title, genre, requirement
         "genre": genre.strip(),
         "requirements": requirements.strip(),
     }
-    get_supabase().table("tasks").update(payload).eq("id", task_id).execute()
+    supabase_request(
+        "PATCH",
+        "tasks",
+        params={"id": f"eq.{task_id}"},
+        json_body=payload,
+        prefer="return=minimal",
+    )
 
 
 def delete_task_record(task_id):
-    get_supabase().table("tasks").delete().eq("id", task_id).execute()
+    supabase_request(
+        "DELETE",
+        "tasks",
+        params={"id": f"eq.{task_id}"},
+        prefer="return=minimal",
+    )
 
 
 def list_submissions():
-    res = get_supabase().table("submissions").select("*").order("submitted_at", desc=True).execute()
-    return res.data or []
-
+    rows = supabase_request(
+        "GET",
+        "submissions",
+        params={"select": "*", "order": "submitted_at.desc"},
+    )
+    return rows or []
 
 def get_base_url():
     return secret_or_env("APP_BASE_URL", "").rstrip("/")
@@ -220,7 +279,12 @@ def save_submission(task, student_id, student_name, result):
         "genre_score": result["scores"]["Genre & Professional Appropriacy"],
         "total": sum(result["scores"].values()),
     }
-    get_supabase().table("submissions").insert(payload).execute()
+    supabase_request(
+        "POST",
+        "submissions",
+        json_body=payload,
+        prefer="return=minimal",
+    )
 
 
 def build_excel(rows):
