@@ -316,10 +316,23 @@ SCORING CALIBRATION
 - A score of 4 is appropriate only when the score-4 descriptor is genuinely met overall.
 - Judge every dimension independently. One weak dimension must not automatically lower the others.
 - Do not double-penalize language errors under Content, Organization, or Genre unless those errors actually affect that dimension.
-- For Content & Task Fulfillment, focus on whether the required points are addressed and sufficiently developed.
-- For Organization & Coherence, focus on sequencing, paragraphing, progression, and logical connections. Simple writing can still earn 2 or 3 if its organization matches those descriptors.
-- For Language Use, consider range, accuracy, and how much errors affect clarity. Frequent errors can still be score 2 when the main meaning remains understandable.
-- For Genre & Professional Appropriacy, focus on purpose, tone, audience awareness, format, and genre conventions actually required by the task.
+- For Content & Task Fulfillment, first identify the explicit content requirements in Task Requirements, then check each one against the student's actual response.
+- If the response is substantially off-topic and fails to address most or all of the explicit content requirements, score Content 1 when the score-1 descriptor is the closest match. Merely mentioning the task title, one keyword, or an isolated related detail does NOT by itself justify Content 2.
+- Use Content 2 when the student meaningfully addresses part of the task but leaves important required content missing, underdeveloped, repetitive, or uneven.
+- For Organization & Coherence, focus on sequencing, paragraphing, progression, and logical connections. Do not lower Organization merely because the response is off-topic; judge how well the ideas that are actually present are organized.
+- For Language Use, evaluate BOTH range and accuracy. An understandable or mostly error-free response does not automatically earn 4.
+- Language 4 requires an effective range of vocabulary and sentence structures, generally precise word choice, and only minor errors, as stated in the official descriptor.
+- If the writing relies mainly on basic, repetitive sentence patterns and common vocabulary, Language 4 is not the closest descriptor even when grammar is mostly correct. In that case, compare carefully with Language 2 or 3.
+- For Genre & Professional Appropriacy, focus on whether the student actually carries out the assigned communicative purpose and genre expectations, not merely whether the response uses first person or has a superficially suitable format.
+- Judge every dimension independently. A strongly off-topic response may still have clear Organization or accurate Language, but those dimensions must still meet their own descriptors rather than receiving inflated scores.
+
+FINAL SCORE CHECK
+Before returning the JSON, verify the four scores one more time:
+- Content: Did the response actually fulfill the stated requirements, or is it mainly about something else?
+- Organization: Are the ideas logically ordered and connected, independent of whether the content is on-topic?
+- Language: Does the response truly show the RANGE as well as the accuracy required by the chosen descriptor?
+- Genre: Does the writing actually perform the assigned purpose and conventions?
+Do not use the same score across dimensions merely for consistency. Do not inflate a score because the writing is readable, fluent, long, or grammatically acceptable.
 
 IMPORTANT TASK RULES
 - No half points.
