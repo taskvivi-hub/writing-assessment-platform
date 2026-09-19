@@ -15,74 +15,74 @@ APP_NAME = "Writing Assessment"
 RUBRIC = {
     "Content & Task Fulfillment": {
         4: (
-            "Fully addresses all task requirements. Content is relevant, sufficiently developed, and supported with specific information, examples, or evidence appropriate to the academic or professional purpose.",
-            "完整回應所有任務要求。內容切題且發展充分，並提供符合學術或專業目的的具體資訊、例子或證據作為支持。"
+            "Fully addresses all task requirements. Content is directly relevant, sufficiently developed, and supported with specific information, examples, or evidence appropriate to the assigned task and purpose.",
+            "完整回應所有任務要求。內容與指定任務直接相關且發展充分，並提供符合任務與目的的具體資訊、例子或證據作為支持。"
         ),
         3: (
-            "Addresses the main task requirements. Content is relevant and adequately developed, with enough supporting information to complete the task successfully.",
-            "回應主要的任務要求。內容切題且有適當發展，並提供足夠的相關資訊，能夠完成此項任務。"
+            "Addresses the main task requirements. Content is relevant and adequately developed, with enough supporting information to complete the assigned task successfully.",
+            "回應主要的任務要求。內容與指定任務相關且有適當發展，並提供足夠的相關資訊，能夠完成此項任務。"
         ),
         2: (
-            "Addresses only part of the task or develops ideas unevenly. Support may be limited, repetitive, or insufficient for the intended purpose.",
-            "僅回應部分任務要求，或想法發展不均。支持內容可能有限、重複，或不足以達成任務目的。"
+            "Addresses only part of the assigned task or develops required ideas unevenly. Important task content may be missing, weakly developed, repetitive, or only partly relevant.",
+            "僅回應部分指定任務，或對必要內容的發展不均。重要任務內容可能缺漏、發展不足、重複，或只有部分與任務相關。"
         ),
         1: (
-            "Does not adequately address the task. Content is minimal, off-topic, or too incomplete to fulfill the required academic or professional purpose.",
-            "未能充分回應任務。內容過少、偏離主題，或過於不完整，無法達成所要求的學術或專業目的。"
+            "Does not adequately address the assigned task. The response is largely off-topic, minimal, or too incomplete to fulfill the required purpose.",
+            "未能充分回應指定任務。內容大多偏題、過少，或過於不完整，無法達成任務要求的目的。"
         )
     },
     "Organization & Coherence": {
         4: (
-            "Information is well organized at both paragraph and whole-text levels. Ideas progress logically, transitions are effective, and the reader can follow the argument or message without difficulty.",
-            "段落與全文的資訊組織良好。想法發展有邏輯，轉承有效，讀者能輕鬆理解文章的論述或訊息。"
+            "The required task content is well organized at both paragraph and whole-text levels. Ideas progress logically, transitions are effective, and the assigned message or purpose is easy to follow.",
+            "任務所要求的內容在段落與全文層次皆組織良好。想法發展有邏輯，轉承有效，讀者能輕鬆理解指定的訊息或目的。"
         ),
         3: (
-            "Organization is generally clear. Paragraphing and sequencing are appropriate, and most ideas are connected logically, with only minor lapses in coherence.",
-            "整體組織大致清楚。段落安排與內容順序適當，大部分想法之間具有合理連結，僅有少數地方銜接不夠順暢。"
+            "The required task content is generally organized clearly. Sequencing and connections are appropriate, with only minor lapses in coherence while carrying out the assigned task.",
+            "任務所要求的內容整體組織大致清楚。內容順序與連結適當，在完成指定任務時僅有少數銜接不夠順暢之處。"
         ),
         2: (
-            "Some organization is evident, but paragraphing, sequencing, or transitions are inconsistent and occasionally make the text difficult to follow.",
-            "可看出部分組織安排，但段落、內容順序或轉承不一致，有時會使文章較難理解。"
+            "Some organization of task-related content is evident, but sequencing, paragraphing, or transitions are inconsistent. Off-topic or loosely connected ideas sometimes weaken the assigned message.",
+            "可看出部分與任務相關內容的組織安排，但內容順序、段落或轉承不一致。偏題或連結鬆散的想法有時會削弱指定訊息的表達。"
         ),
         1: (
-            "Organization is weak or unclear. Ideas are fragmented, poorly sequenced, or insufficiently connected, making the text difficult to follow.",
-            "組織薄弱或不清楚。想法零散、順序不佳或缺乏足夠連結，使文章難以理解。"
+            "The response does not organize the required task content effectively. Ideas are largely off-topic, fragmented, poorly sequenced, or insufficiently connected for the assigned purpose.",
+            "未能有效組織任務所要求的內容。想法大多偏題、零散、順序不佳或缺乏足夠連結，無法達成指定目的。"
         )
     },
     "Language Use": {
         4: (
-            "Uses an effective range of vocabulary and sentence structures, including appropriate academic or professional language. Word choice is generally precise, and errors are minor and do not affect meaning.",
-            "能有效運用多樣的字彙與句型，包括適當的學術或專業用語。用字大致精確，錯誤輕微且不影響意思。"
+            "Uses an effective range of vocabulary and sentence structures to express the assigned task content accurately and appropriately. Word choice is generally precise, and errors are minor and do not affect the intended meaning.",
+            "能有效運用多樣的字彙與句型，正確且適切地表達指定任務內容。用字大致精確，錯誤輕微且不影響預定意思。"
         ),
         3: (
-            "Uses sufficient vocabulary and sentence structures to complete the task. Academic or professional language is generally appropriate, and errors rarely interfere with meaning.",
-            "能使用足夠的字彙與句型完成任務。學術或專業用語大致適當，錯誤很少影響意思理解。"
+            "Uses sufficient vocabulary and sentence structures to communicate the assigned task content. Language is generally appropriate to the purpose, and errors rarely interfere with the intended meaning.",
+            "能使用足夠的字彙與句型表達指定任務內容。語言大致符合任務目的，錯誤很少影響預定意思。"
         ),
         2: (
-            "Uses a limited range of vocabulary or structures. Repetition, imprecise wording, or frequent errors sometimes reduce clarity or accuracy.",
-            "字彙或句型的運用範圍較有限。重複、不精確的用字或較頻繁的錯誤，有時會降低表達的清楚度或正確性。"
+            "Language only partly supports the assigned task. Vocabulary or structures are limited, repetitive, imprecise, or not consistently relevant to the required content, and frequent errors sometimes reduce clarity.",
+            "語言僅能部分支援指定任務。字彙或句型較有限、重複、不精確，或未能持續用於表達任務所要求的內容；較頻繁的錯誤有時會降低清楚度。"
         ),
         1: (
-            "Language resources are too limited for the task. Frequent or serious errors in wording or sentence construction make important parts of the text difficult to understand.",
-            "語言能力不足以完成任務。用字或句子結構出現頻繁或嚴重錯誤，使文章的重要部分難以理解。"
+            "Language does not adequately support the assigned task. The response may be largely off-topic, too limited, or contain frequent or serious errors that prevent effective communication of the required content.",
+            "語言未能充分支援指定任務。內容可能大多偏題、語言資源過少，或有頻繁／嚴重錯誤，使任務所要求的內容無法有效傳達。"
         )
     },
     "Genre & Professional Appropriacy": {
         4: (
-            "Consistently follows the expected purpose, organization, format, tone, and conventions of the assigned genre. The writing is well suited to its intended audience and professional or academic context.",
-            "能一致地符合指定文類的目的、組織、格式、語氣與慣例。文章非常適合預定讀者以及專業或學術情境。"
+            "Consistently fulfills the assigned communicative purpose and follows the expected organization, format, tone, and conventions of the specified genre. The writing is well suited to its intended audience and context.",
+            "能一致地達成指定的溝通目的，並符合指定文類預期的組織、格式、語氣與慣例。文章非常適合預定讀者與情境。"
         ),
         3: (
-            "Generally follows the expected purpose, organization, format, and tone of the genre. Minor inconsistencies do not interfere with the intended communication.",
-            "大致符合該文類預期的目的、組織、格式與語氣。少數不一致之處不影響原本的溝通目的。"
+            "Generally fulfills the assigned communicative purpose and follows the expected organization, format, and tone of the specified genre. Minor inconsistencies do not interfere with the intended communication.",
+            "大致能達成指定的溝通目的，並符合指定文類預期的組織、格式與語氣。少數不一致之處不影響原本的溝通目的。"
         ),
         2: (
-            "Shows partial control of the genre. Format, tone, organization, or audience awareness is inconsistent and sometimes weakens the effectiveness of the text.",
-            "對該文類僅有部分掌握。格式、語氣、組織或讀者意識不一致，有時會降低文章的溝通效果。"
+            "Shows partial control of the assigned genre and purpose. Format, tone, organization, audience awareness, or task relevance is inconsistent and sometimes weakens communication.",
+            "對指定文類與目的僅有部分掌握。格式、語氣、組織、讀者意識或與任務的相關性不一致，有時會降低溝通效果。"
         ),
         1: (
-            "Shows limited awareness of the assigned genre. Format, tone, organization, or audience expectations are frequently inappropriate for the task.",
-            "對指定文類的掌握有限。格式、語氣、組織或讀者期待經常不符合任務需求。"
+            "Shows limited awareness of the assigned genre and communicative purpose. The response is largely inappropriate, off-task, or inconsistent with the expected audience, format, tone, or conventions.",
+            "對指定文類與溝通目的的掌握有限。內容大多不適切、偏離任務，或與預期讀者、格式、語氣或文類慣例不一致。"
         )
     }
 }
@@ -293,10 +293,32 @@ Genre / Writing Type: {task["genre"]}
 Task Requirements:
 {requirements}
 
-OFFICIAL RUBRIC
-Use these descriptors exactly as the basis for scoring:
+OFFICIAL TASK-ANCHORED RUBRIC
+Use these descriptors exactly as the basis for scoring. Every dimension is evaluated within the context of THIS assigned task, not as a general measure of the student's writing ability.
 
 {rubric_text}
+
+CORE SCORING PRINCIPLE: TASK FIRST
+Before assigning any score, identify:
+1. the topic and communicative purpose of the task,
+2. every explicit requirement in Task Requirements,
+3. the expected genre and audience.
+Then evaluate ALL FOUR dimensions in relation to that assigned task.
+
+Do NOT treat Content as the only task-dependent dimension. Organization, Language Use, and Genre must also be judged by how effectively they organize, express, and realize the CONTENT AND PURPOSE required by this task.
+
+TASK-RELEVANCE GATE
+Classify the response first:
+- STRONGLY ON TASK: most or all required content is addressed.
+- PARTLY ON TASK: some required content is meaningfully addressed, but important parts are missing or underdeveloped.
+- MINIMALLY ON TASK / LARGELY OFF TOPIC: the response mostly discusses unrelated material, only mentions isolated task words, or fails to carry out the assigned purpose.
+
+If the response is MINIMALLY ON TASK / LARGELY OFF TOPIC:
+- Content should normally be 1.
+- Organization should be 1 when the required task content is not meaningfully organized, even if unrelated sentences have some local order.
+- Language Use should be 1 when the language does not effectively communicate the required task content. Correct grammar in unrelated content does NOT by itself justify a high Language score.
+- Genre should be 1 when the response does not carry out the assigned communicative purpose or genre in a meaningful way.
+- Do not reward an off-topic response with high scores simply because it is readable, grammatical, long, or locally coherent.
 
 ASSESSMENT RULES
 Evaluate exactly these four dimensions. Give an INTEGER score from 1 to 4 for each:
@@ -306,38 +328,47 @@ Evaluate exactly these four dimensions. Give an INTEGER score from 1 to 4 for ea
 4. Genre & Professional Appropriacy
 
 SCORING CALIBRATION
-- Score each dimension by matching the student's actual performance to the closest official descriptor.
+- Score each dimension by matching the student's task-specific performance to the closest official descriptor.
 - Do NOT deliberately score generously or harshly.
-- Do NOT lower a score merely because the writing is simple or written by an A2-B1 learner.
-- Do NOT raise a score merely because the response is understandable or attempts the task.
-- A score of 1 is appropriate only when the score-1 descriptor is genuinely the closest match.
-- A score of 2 is appropriate when there is partial control, limited development, inconsistent organization, limited language range, or frequent errors as described in the rubric.
-- A score of 3 is appropriate when the score-3 descriptor is genuinely met overall.
-- A score of 4 is appropriate only when the score-4 descriptor is genuinely met overall.
-- Judge every dimension independently. One weak dimension must not automatically lower the others.
-- Do not double-penalize language errors under Content, Organization, or Genre unless those errors actually affect that dimension.
-- For Content & Task Fulfillment, first identify the explicit content requirements in Task Requirements, then check each one against the student's actual response.
-- If the response is substantially off-topic and fails to address most or all of the explicit content requirements, score Content 1 when the score-1 descriptor is the closest match. Merely mentioning the task title, one keyword, or an isolated related detail does NOT by itself justify Content 2.
-- Use Content 2 when the student meaningfully addresses part of the task but leaves important required content missing, underdeveloped, repetitive, or uneven.
-- For Organization & Coherence, focus on sequencing, paragraphing, progression, and logical connections. Do not lower Organization merely because the response is off-topic; judge how well the ideas that are actually present are organized.
-- For Language Use, evaluate BOTH range and accuracy. An understandable or mostly error-free response does not automatically earn 4.
-- Language 4 requires an effective range of vocabulary and sentence structures, generally precise word choice, and only minor errors, as stated in the official descriptor.
-- If the writing relies mainly on basic, repetitive sentence patterns and common vocabulary, Language 4 is not the closest descriptor even when grammar is mostly correct. In that case, compare carefully with Language 2 or 3.
-- For Genre & Professional Appropriacy, focus on whether the student actually carries out the assigned communicative purpose and genre expectations, not merely whether the response uses first person or has a superficially suitable format.
-- Judge every dimension independently. A strongly off-topic response may still have clear Organization or accurate Language, but those dimensions must still meet their own descriptors rather than receiving inflated scores.
+- A score of 1 is appropriate when the student fails to perform that dimension adequately for the assigned task.
+- A score of 2 is appropriate for partial, limited, inconsistent, or weak task performance.
+- A score of 3 is appropriate only when the score-3 descriptor is genuinely met for the assigned task.
+- A score of 4 is appropriate only when the score-4 descriptor is genuinely met for the assigned task.
+- Do not automatically give the same score to all four dimensions. Judge each dimension separately, but always within the same task context.
+
+DIMENSION CHECKS
+Content & Task Fulfillment:
+- Check every explicit Task Requirement.
+- Merely mentioning the title, one keyword, or one isolated related detail does not count as meaningful task fulfillment.
+- If most required content is absent or replaced by unrelated content, score 1.
+
+Organization & Coherence:
+- Evaluate the organization of the REQUIRED TASK CONTENT, not just whether unrelated sentences happen to follow one another.
+- A coherent paragraph about the wrong topic is not strong task organization.
+- Off-topic, fragmented, random, or loosely connected material should substantially lower this score.
+
+Language Use:
+- Evaluate vocabulary, sentence structures, accuracy, spelling, punctuation, capitalization, and how effectively the language expresses the REQUIRED TASK CONTENT.
+- Correct grammar alone does not earn a high score if the language is not being used to perform the assigned task.
+- Frequent grammar, spelling, punctuation, capitalization, wording, or sentence-structure problems should lower the score according to severity and frequency.
+- Language 4 requires both strong task-relevant expression and an effective range of accurate language.
+
+Genre & Professional Appropriacy:
+- Evaluate whether the response actually performs the assigned communicative purpose and genre.
+- Surface features alone are not enough. First person, paragraph form, or a title does not prove genre control.
+- If the response does not meaningfully carry out the assigned purpose, Genre should be low.
 
 FINAL SCORE CHECK
-Before returning the JSON, verify the four scores one more time:
-- Content: Did the response actually fulfill the stated requirements, or is it mainly about something else?
-- Organization: Are the ideas logically ordered and connected, independent of whether the content is on-topic?
-- Language: Does the response truly show the RANGE as well as the accuracy required by the chosen descriptor?
-- Genre: Does the writing actually perform the assigned purpose and conventions?
-Do not use the same score across dimensions merely for consistency. Do not inflate a score because the writing is readable, fluent, long, or grammatically acceptable.
+Before returning the JSON, verify:
+- Is each score based on THIS task rather than on general writing ability?
+- Would the score still make sense if the Task Title and Task Requirements were shown beside it?
+- Have unrelated but grammatical sentences been prevented from inflating Organization or Language?
+- Have frequent grammar, spelling, punctuation, and capitalization errors been reflected in Language Use?
+- Does Genre reflect the actual assigned communicative purpose?
 
 IMPORTANT TASK RULES
 - No half points.
-- Do not add criteria.
-- Judge Content & Task Fulfillment against the stated Task Requirements.
+- Scores must be 1, 2, 3, or 4. There is no score 0 in the current rubric.
 - Evaluate only the writing the student is required to produce.
 - Some assignments may already provide fixed genre elements outside the student's response, such as a subject line, greeting, opening, closing, or signature.
 - Do NOT penalize a student for omitting any element that is not explicitly required in Task Requirements.
@@ -345,10 +376,11 @@ IMPORTANT TASK RULES
 - If the image is not readable enough, do not guess.
 
 LANGUAGE CORRECTIONS
-Identify ALL clear, genuine errors in these three categories:
+Identify ALL clear, genuine errors in these categories:
 - Grammar
 - Spelling
 - Punctuation
+- Capitalization
 
 Do not impose an artificial maximum number of corrections. If there are many genuine errors, list all of them.
 For every error:
