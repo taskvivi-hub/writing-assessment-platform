@@ -254,22 +254,16 @@ def score_overview_chart(scores):
         score = int(scores[dim])
         height = 36 * score
         bars.append(
-            f"""
-            <div class="scorebar-item">
-                <div class="scorebar-value">{score}/4</div>
-                <div class="scorebar-track">
-                    <div class="scorebar-fill" style="height:{height}px;background:{colors[dim]};"></div>
-                </div>
-                <div class="scorebar-label">{html.escape(short_labels[dim])}</div>
-            </div>
-            """
+            '<div class="scorebar-item">'
+            f'<div class="scorebar-value">{score}/4</div>'
+            '<div class="scorebar-track">'
+            f'<div class="scorebar-fill" style="height:{height}px;background:{colors[dim]};"></div>'
+            '</div>'
+            f'<div class="scorebar-label">{html.escape(short_labels[dim])}</div>'
+            '</div>'
         )
 
-    return f"""
-    <div class="scorechart">
-        {''.join(bars)}
-    </div>
-    """
+    return '<div class="scorechart">' + ''.join(bars) + '</div>'
 
 
 def build_prompt(task):
