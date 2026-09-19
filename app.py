@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import html
 from datetime import date
 from io import BytesIO
 
@@ -13,28 +14,76 @@ APP_NAME = "Writing Assessment"
 
 RUBRIC = {
     "Content & Task Fulfillment": {
-        4: ("Exceeds Expectations", "Fully addresses all task requirements. Content is relevant, sufficiently developed, and supported with specific information, examples, or evidence appropriate to the academic or professional purpose."),
-        3: ("Meets Expectations", "Addresses the main task requirements. Content is relevant and adequately developed, with enough supporting information to complete the task successfully."),
-        2: ("Approaching Expectations", "Addresses only part of the task or develops ideas unevenly. Support may be limited, repetitive, or insufficient for the intended purpose."),
-        1: ("Needs Development", "Does not adequately address the task. Content is minimal, off-topic, or too incomplete to fulfill the required academic or professional purpose.")
+        4: (
+            "Fully addresses all task requirements. Content is relevant, sufficiently developed, and supported with specific information, examples, or evidence appropriate to the academic or professional purpose.",
+            "完整回應所有任務要求。內容切題且發展充分，並提供符合學術或專業目的的具體資訊、例子或證據作為支持。"
+        ),
+        3: (
+            "Addresses the main task requirements. Content is relevant and adequately developed, with enough supporting information to complete the task successfully.",
+            "回應主要的任務要求。內容切題且有適當發展，並提供足夠的相關資訊，能夠完成此項任務。"
+        ),
+        2: (
+            "Addresses only part of the task or develops ideas unevenly. Support may be limited, repetitive, or insufficient for the intended purpose.",
+            "僅回應部分任務要求，或想法發展不均。支持內容可能有限、重複，或不足以達成任務目的。"
+        ),
+        1: (
+            "Does not adequately address the task. Content is minimal, off-topic, or too incomplete to fulfill the required academic or professional purpose.",
+            "未能充分回應任務。內容過少、偏離主題，或過於不完整，無法達成所要求的學術或專業目的。"
+        )
     },
     "Organization & Coherence": {
-        4: ("Exceeds Expectations", "Information is well organized at both paragraph and whole-text levels. Ideas progress logically, transitions are effective, and the reader can follow the argument or message without difficulty."),
-        3: ("Meets Expectations", "Organization is generally clear. Paragraphing and sequencing are appropriate, and most ideas are connected logically, with only minor lapses in coherence."),
-        2: ("Approaching Expectations", "Some organization is evident, but paragraphing, sequencing, or transitions are inconsistent and occasionally make the text difficult to follow."),
-        1: ("Needs Development", "Organization is weak or unclear. Ideas are fragmented, poorly sequenced, or insufficiently connected, making the text difficult to follow.")
+        4: (
+            "Information is well organized at both paragraph and whole-text levels. Ideas progress logically, transitions are effective, and the reader can follow the argument or message without difficulty.",
+            "段落與全文的資訊組織良好。想法發展有邏輯，轉承有效，讀者能輕鬆理解文章的論述或訊息。"
+        ),
+        3: (
+            "Organization is generally clear. Paragraphing and sequencing are appropriate, and most ideas are connected logically, with only minor lapses in coherence.",
+            "整體組織大致清楚。段落安排與內容順序適當，大部分想法之間具有合理連結，僅有少數地方銜接不夠順暢。"
+        ),
+        2: (
+            "Some organization is evident, but paragraphing, sequencing, or transitions are inconsistent and occasionally make the text difficult to follow.",
+            "可看出部分組織安排，但段落、內容順序或轉承不一致，有時會使文章較難理解。"
+        ),
+        1: (
+            "Organization is weak or unclear. Ideas are fragmented, poorly sequenced, or insufficiently connected, making the text difficult to follow.",
+            "組織薄弱或不清楚。想法零散、順序不佳或缺乏足夠連結，使文章難以理解。"
+        )
     },
     "Language Use": {
-        4: ("Exceeds Expectations", "Uses an effective range of vocabulary and sentence structures, including appropriate academic or professional language. Word choice is generally precise, and errors are minor and do not affect meaning."),
-        3: ("Meets Expectations", "Uses sufficient vocabulary and sentence structures to complete the task. Academic or professional language is generally appropriate, and errors rarely interfere with meaning."),
-        2: ("Approaching Expectations", "Uses a limited range of vocabulary or structures. Repetition, imprecise wording, or frequent errors sometimes reduce clarity or accuracy."),
-        1: ("Needs Development", "Language resources are too limited for the task. Frequent or serious errors in wording or sentence construction make important parts of the text difficult to understand.")
+        4: (
+            "Uses an effective range of vocabulary and sentence structures, including appropriate academic or professional language. Word choice is generally precise, and errors are minor and do not affect meaning.",
+            "能有效運用多樣的字彙與句型，包括適當的學術或專業用語。用字大致精確，錯誤輕微且不影響意思。"
+        ),
+        3: (
+            "Uses sufficient vocabulary and sentence structures to complete the task. Academic or professional language is generally appropriate, and errors rarely interfere with meaning.",
+            "能使用足夠的字彙與句型完成任務。學術或專業用語大致適當，錯誤很少影響意思理解。"
+        ),
+        2: (
+            "Uses a limited range of vocabulary or structures. Repetition, imprecise wording, or frequent errors sometimes reduce clarity or accuracy.",
+            "字彙或句型的運用範圍較有限。重複、不精確的用字或較頻繁的錯誤，有時會降低表達的清楚度或正確性。"
+        ),
+        1: (
+            "Language resources are too limited for the task. Frequent or serious errors in wording or sentence construction make important parts of the text difficult to understand.",
+            "語言能力不足以完成任務。用字或句子結構出現頻繁或嚴重錯誤，使文章的重要部分難以理解。"
+        )
     },
     "Genre & Professional Appropriacy": {
-        4: ("Exceeds Expectations", "Consistently follows the expected purpose, organization, format, tone, and conventions of the assigned genre. The writing is well suited to its intended audience and professional or academic context."),
-        3: ("Meets Expectations", "Generally follows the expected purpose, organization, format, and tone of the genre. Minor inconsistencies do not interfere with the intended communication."),
-        2: ("Approaching Expectations", "Shows partial control of the genre. Format, tone, organization, or audience awareness is inconsistent and sometimes weakens the effectiveness of the text."),
-        1: ("Needs Development", "Shows limited awareness of the assigned genre. Format, tone, organization, or audience expectations are frequently inappropriate for the task.")
+        4: (
+            "Consistently follows the expected purpose, organization, format, tone, and conventions of the assigned genre. The writing is well suited to its intended audience and professional or academic context.",
+            "能一致地符合指定文類的目的、組織、格式、語氣與慣例。文章非常適合預定讀者以及專業或學術情境。"
+        ),
+        3: (
+            "Generally follows the expected purpose, organization, format, and tone of the genre. Minor inconsistencies do not interfere with the intended communication.",
+            "大致符合該文類預期的目的、組織、格式與語氣。少數不一致之處不影響原本的溝通目的。"
+        ),
+        2: (
+            "Shows partial control of the genre. Format, tone, organization, or audience awareness is inconsistent and sometimes weakens the effectiveness of the text.",
+            "對該文類僅有部分掌握。格式、語氣、組織或讀者意識不一致，有時會降低文章的溝通效果。"
+        ),
+        1: (
+            "Shows limited awareness of the assigned genre. Format, tone, organization, or audience expectations are frequently inappropriate for the task.",
+            "對指定文類的掌握有限。格式、語氣、組織或讀者期待經常不符合任務需求。"
+        )
     }
 }
 
@@ -176,9 +225,58 @@ def image_to_data_url(uploaded_file):
     return f"data:{mime};base64,{b64}"
 
 
+def rubric_for_prompt():
+    lines = []
+    for dim, levels in RUBRIC.items():
+        lines.append(dim)
+        for score in (4, 3, 2, 1):
+            english_desc, _ = levels[score]
+            lines.append(f"{score}: {english_desc}")
+    return "\n".join(lines)
+
+
+def score_overview_chart(scores):
+    colors = {
+        "Content & Task Fulfillment": "#4E79A7",
+        "Organization & Coherence": "#59A14F",
+        "Language Use": "#F28E2B",
+        "Genre & Professional Appropriacy": "#B07AA1",
+    }
+    short_labels = {
+        "Content & Task Fulfillment": "Content",
+        "Organization & Coherence": "Organization",
+        "Language Use": "Language",
+        "Genre & Professional Appropriacy": "Genre",
+    }
+
+    bars = []
+    for dim in RUBRIC:
+        score = int(scores[dim])
+        height = 36 * score
+        bars.append(
+            f"""
+            <div class="scorebar-item">
+                <div class="scorebar-value">{score}/4</div>
+                <div class="scorebar-track">
+                    <div class="scorebar-fill" style="height:{height}px;background:{colors[dim]};"></div>
+                </div>
+                <div class="scorebar-label">{html.escape(short_labels[dim])}</div>
+            </div>
+            """
+        )
+
+    return f"""
+    <div class="scorechart">
+        {''.join(bars)}
+    </div>
+    """
+
+
 def build_prompt(task):
     requirements = task.get("requirements", "").strip()
-    return f'''You are an English writing assessor. Read the student's uploaded composition carefully.
+    rubric_text = rubric_for_prompt()
+
+    return f"""You are an English writing assessor. Read the student's uploaded composition carefully.
 
 TEACHER SETTINGS
 Task Title: {task["title"]}
@@ -186,12 +284,26 @@ Genre / Writing Type: {task["genre"]}
 Task Requirements:
 {requirements}
 
+OFFICIAL RUBRIC
+Use these descriptors exactly as the basis for scoring:
+
+{rubric_text}
+
 ASSESSMENT RULES
 Evaluate exactly these four dimensions. Give an INTEGER score from 1 to 4 for each:
 1. Content & Task Fulfillment
 2. Organization & Coherence
 3. Language Use
 4. Genre & Professional Appropriacy
+
+SCORING CALIBRATION
+- Apply the rubric conservatively and distinguish clearly between scores 2, 3, and 4.
+- A score of 3 means the response clearly meets the score-3 descriptor overall. Do not give 3 simply because the student attempted the task or the meaning is understandable.
+- A score of 4 should be reserved for writing that clearly satisfies the score-4 descriptor, not merely writing that is generally successful.
+- For Content & Task Fulfillment, basic reasons with little explanation, thin development, repetitive support, or insufficient detail should normally fall under score 2 rather than score 3.
+- For Organization & Coherence, a sequence of understandable sentences is not by itself enough for score 3. Score 3 requires generally clear progression and logical connections among ideas.
+- For Language Use, consider the frequency and seriousness of errors relative to the length of the response. Frequent grammatical or wording errors should not receive score 3 merely because the overall meaning can still be understood.
+- For Genre & Professional Appropriacy, judge only the genre features the student is actually required to produce.
 
 Important:
 - No half points.
@@ -229,7 +341,7 @@ Return VALID JSON ONLY:
     }}
   ],
   "content_organization_suggestions": ["brief suggestion"]
-}}'''
+}}"""
 
 
 def assess(uploaded_file, task):
@@ -340,7 +452,16 @@ st.markdown('''
 .block-container{max-width:900px;padding-top:2rem;padding-bottom:4rem}
 .taskbox,.card,.totalbox{border:1px solid rgba(120,120,120,.28);border-radius:14px;padding:1rem 1.1rem;margin:.7rem 0}
 .totalbox{text-align:center;border-width:2px}.totalnum{font-size:2.2rem;font-weight:800}
-.cardtitle{font-size:1.05rem;font-weight:700}.score{float:right;font-weight:800}.level{font-weight:700;margin-top:.35rem}.meta{opacity:.75}
+.cardtitle{font-size:1.05rem;font-weight:700}.score{float:right;font-weight:800}.meta{opacity:.75}
+.desc-en{margin-top:.65rem;line-height:1.55}
+.desc-zh{margin-top:.5rem;line-height:1.65;opacity:.88}
+.scorechart{display:flex;justify-content:space-around;align-items:flex-end;gap:12px;border:1px solid rgba(120,120,120,.22);border-radius:14px;padding:18px 12px 12px;margin:.8rem 0 1.2rem}
+.scorebar-item{width:22%;min-width:92px;text-align:center}
+.scorebar-value{font-weight:800;margin-bottom:6px}
+.scorebar-track{height:144px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid rgba(120,120,120,.35)}
+.scorebar-fill{width:58px;max-width:80%;border-radius:8px 8px 0 0}
+.scorebar-label{font-size:.88rem;font-weight:650;margin-top:8px;line-height:1.2}
+@media (max-width:640px){.scorechart{gap:5px;padding-left:5px;padding-right:5px}.scorebar-item{min-width:0;width:25%}.scorebar-fill{width:42px}.scorebar-label{font-size:.75rem}}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -413,12 +534,20 @@ if task_id:
                 unsafe_allow_html=True
             )
 
+            st.subheader("Score Overview")
+            st.markdown(
+                score_overview_chart(result["scores"]),
+                unsafe_allow_html=True
+            )
+
             for dim, levels in RUBRIC.items():
                 score = result["scores"][dim]
-                level, desc = levels[score]
+                desc_en, desc_zh = levels[score]
                 st.markdown(
-                    f'<div class="card"><span class="cardtitle">{dim}</span><span class="score">{score}/4</span>'
-                    f'<div class="level">{level}</div><div>{desc}</div></div>',
+                    f'<div class="card"><span class="cardtitle">{html.escape(dim)}</span>'
+                    f'<span class="score">{score}/4</span>'
+                    f'<div class="desc-en">{html.escape(desc_en)}</div>'
+                    f'<div class="desc-zh">{html.escape(desc_zh)}</div></div>',
                     unsafe_allow_html=True
                 )
 
