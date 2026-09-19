@@ -210,6 +210,21 @@ def list_submissions():
     )
     return rows or []
 
+
+def submission_exists(task_id, student_name):
+    rows = supabase_request(
+        "GET",
+        "submissions",
+        params={
+            "select": "id",
+            "task_id": f"eq.{task_id}",
+            "student_name": f"eq.{student_name.strip()}",
+            "limit": "1",
+        },
+    )
+    return bool(rows)
+
+
 def get_base_url():
     return secret_or_env("APP_BASE_URL", "").rstrip("/")
 
@@ -401,13 +416,14 @@ def assess(uploaded_file, task):
 
 
 
-def save_submission(task, student_id, student_name, result):
+def save_submission(task, seat_number, student_id, student_name, result):
     payload = {
         "task_id": task["id"],
         "class_name": task.get("class_name", ""),
         "task_date": task.get("task_date"),
         "task_title": task.get("title", ""),
         "genre": task.get("genre", ""),
+        "seat_number": seat_number.strip(),
         "student_id": student_id.strip(),
         "student_name": student_name.strip(),
         "content_score": result["scores"]["Content & Task Fulfillment"],
@@ -430,7 +446,7 @@ def build_excel(rows):
     ws.title = "Writing Results"
     headers = [
         "Class", "Task Date", "Task Title", "Genre / Writing Type",
-        "Student ID", "Student Name",
+        "Seat No.", "Student ID", "Student Name",
         "Content & Task Fulfillment", "Organization & Coherence",
         "Language Use", "Genre & Professional Appropriacy",
         "Total /16", "Submission Time"
@@ -439,12 +455,12 @@ def build_excel(rows):
     for r in rows:
         ws.append([
             r.get("class_name", ""), r.get("task_date", ""), r.get("task_title", ""), r.get("genre", ""),
-            r.get("student_id", ""), r.get("student_name", ""),
+            r.get("seat_number", ""), r.get("student_id", ""), r.get("student_name", ""),
             r.get("content_score", ""), r.get("organization_score", ""),
             r.get("language_score", ""), r.get("genre_score", ""),
             r.get("total", ""), r.get("submitted_at", "")
         ])
-    widths = [18, 12, 28, 20, 16, 18, 24, 24, 16, 30, 12, 22]
+    widths = [18, 12, 28, 20, 10, 16, 18, 24, 24, 16, 30, 12, 22]
     for i, width in enumerate(widths, 1):
         ws.column_dimensions[chr(64 + i)].width = width
     bio = BytesIO()
@@ -523,8 +539,14 @@ if task_id:
             st.write(task["requirements"])
 
         st.subheader("Step 1. Enter your information")
-        student_id = st.text_input("Student ID")
-        student_name = st.text_input("Student Name")
+        st.caption("Use your real name. Each student can submit this task only once.")
+        info_c1, info_c2, info_c3 = st.columns([1, 2.2, 2.2])
+        with info_c1:
+            seat_number = st.text_input("Seat No.", max_chars=2, placeholder="e.g., 8")
+        with info_c2:
+            student_id = st.text_input("Student ID", max_chars=9)
+        with info_c3:
+            student_name = st.text_input("Student Name")
 
         st.subheader("Step 2. Upload your writing")
         st.write("Take a clear photo of your writing and upload it here.")
@@ -532,22 +554,27 @@ if task_id:
 
         st.subheader("Step 3. Submit your writing")
         if st.button("Submit for Assessment", type="primary", use_container_width=True):
-            if not student_id.strip() or not student_name.strip():
-                st.warning("Please enter your Student ID and Student Name.")
+            if not seat_number.strip() or not student_id.strip() or not student_name.strip():
+                st.warning("Please enter your Seat No., Student ID, and Student Name.")
+            elif not seat_number.strip().isdigit():
+                st.warning("Seat No. must contain 1 or 2 digits.")
             elif not uploaded:
                 st.warning("Please upload an image first.")
             else:
-                with st.spinner("Checking your writing..."):
-                    try:
-                        result = assess(uploaded, task)
-                        if not result.get("image_readable", True):
-                            st.error("The image is not clear enough to read. Please upload a clearer photo.")
-                        else:
-                            save_submission(task, student_id, student_name, result)
-                            st.session_state["result"] = result
-                            st.session_state["show_revision"] = False
-                    except Exception as e:
-                        st.error(f"Assessment could not be completed: {e}")
+                try:
+                    if submission_exists(task["id"], student_name):
+                        st.error("This student has already submitted this task. Each student can submit only once.")
+                    else:
+                        with st.spinner("Processing your writing... Please do not click Submit again."):
+                            result = assess(uploaded, task)
+                            if not result.get("image_readable", True):
+                                st.error("The image is not clear enough to read. Please upload a clearer photo.")
+                            else:
+                                save_submission(task, seat_number, student_id, student_name, result)
+                                st.session_state["result"] = result
+                                st.session_state["show_revision"] = False
+                except Exception as e:
+                    st.error(f"Assessment could not be completed: {e}")
 
         result = st.session_state.get("result")
         if result:
@@ -771,6 +798,7 @@ else:
                     "Class": r.get("class_name", ""),
                     "Task Date": r.get("task_date", ""),
                     "Task Title": r.get("task_title", ""),
+                    "Seat No.": r.get("seat_number", ""),
                     "Student ID": r.get("student_id", ""),
                     "Student Name": r.get("student_name", ""),
                     "Content": r.get("content_score", ""),
