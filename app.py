@@ -628,6 +628,39 @@ h2{font-size:1.65rem !important;color:var(--wa-text) !important;margin-top:1.25r
 h3{font-size:1.25rem !important;color:var(--wa-text) !important;margin-top:1.15rem !important}
 p, label, .stCaption{line-height:1.6}
 
+/* Student hero + icon-led section headings */
+.wa-hero{
+  text-align:center;
+  padding:.35rem 0 .9rem;
+}
+.wa-hero-icon{
+  width:92px;height:92px;margin:0 auto .65rem;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:28px;
+  background:linear-gradient(135deg,#eaf3ff,#dfeeff);
+  border:1px solid #c8ddf2;
+  box-shadow:0 10px 28px rgba(36,107,253,.12);
+  font-size:3.15rem;line-height:1;
+}
+.wa-hero-title{
+  font-size:2.35rem;font-weight:850;line-height:1.15;color:var(--wa-text);
+  letter-spacing:-.02em;
+}
+.wa-hero-subtitle{
+  margin-top:.4rem;color:var(--wa-muted);font-size:1rem;
+}
+.wa-section-title{
+  display:flex;align-items:center;gap:.65rem;
+  font-size:1.35rem;font-weight:850;color:var(--wa-text);
+  margin:1.35rem 0 .55rem;
+}
+.wa-section-icon{
+  width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:11px;background:var(--wa-soft);border:1px solid #cfe0f1;
+  font-size:1.15rem;flex:0 0 auto;
+}
+.wa-field-label{font-weight:800;color:var(--wa-text);font-size:1rem;margin-bottom:.25rem}
+
 /* task and result cards */
 .taskbox,.card,.totalbox,.scorechart{
   background:var(--wa-card);
@@ -715,6 +748,9 @@ hr{border-color:#dce7f0 !important;margin:1.6rem 0 !important}
   .scorebar-fill{width:44px}
   .scorebar-label{font-size:.78rem}
   .scorebar-value{font-size:.9rem}
+  .wa-hero-icon{width:78px;height:78px;font-size:2.65rem;border-radius:23px}
+  .wa-hero-title{font-size:2rem}
+  .wa-section-title{font-size:1.2rem}
 }
 
 /* Dark-mode safety: keep custom cards readable even when device/browser uses dark mode */
@@ -729,6 +765,9 @@ hr{border-color:#dce7f0 !important;margin:1.6rem 0 !important}
   [data-testid="stFileUploaderDropzone"]{background:#152233 !important;border-color:#587ca4 !important}
   [data-testid="stFileUploaderDropzone"] *{color:#eef4fa !important}
   .scorebar-track{border-bottom-color:#51657a !important}
+  .wa-hero-icon,.wa-section-icon{background:#1c2b3d !important;border-color:#3c526a !important}
+  .wa-hero-title,.wa-section-title,.wa-field-label{color:#f4f7fb !important}
+  .wa-hero-subtitle{color:#c4d0dc !important}
 }
 </style>
 ''', unsafe_allow_html=True)
@@ -750,8 +789,14 @@ if task_id:
         st.title("Writing Assessment")
         st.error("This task link is not available.")
     else:
-        st.title("Writing Assessment")
-        st.write("Follow the steps below to check your writing.")
+        st.markdown(
+            """<div class="wa-hero">
+                <div class="wa-hero-icon">✍️</div>
+                <div class="wa-hero-title">Writing Assessment</div>
+                <div class="wa-hero-subtitle">Follow the steps below to check your writing.</div>
+            </div>""",
+            unsafe_allow_html=True
+        )
 
         st.markdown(
             f'''<div class="taskbox"><b>Class:</b> {task.get("class_name","")}<br>
@@ -762,7 +807,7 @@ if task_id:
         )
 
         if task.get("requirements"):
-            st.subheader("Task Requirements")
+            st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📝</span><span>Task Requirements</span></div>', unsafe_allow_html=True)
             st.write(task["requirements"])
 
         if task.get("is_closed", False):
@@ -770,21 +815,21 @@ if task_id:
             st.info("If you think you still need to submit, please contact your teacher.")
             st.stop()
 
-        st.subheader("Step 1. Enter your information")
+        st.markdown('<div class="wa-section-title"><span class="wa-section-icon">👤</span><span>Step 1. Enter your information</span></div>', unsafe_allow_html=True)
         st.caption("Use your real name. Each student can submit this task only once.")
         info_c1, info_c2, info_c3 = st.columns([1, 2.2, 2.2])
         with info_c1:
-            seat_number = st.text_input("Seat No.", max_chars=2, placeholder="e.g., 1 or 12")
+            seat_number = st.text_input("🔢 Seat No.", max_chars=2, placeholder="e.g., 1 or 12")
         with info_c2:
-            student_id = st.text_input("Student ID", max_chars=9, placeholder="9 characters")
+            student_id = st.text_input("🪪 Student ID", max_chars=9, placeholder="9 characters")
         with info_c3:
-            student_name = st.text_input("Student Name")
+            student_name = st.text_input("👤 Student Name")
 
-        st.subheader("Step 2. Upload your writing")
+        st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📷</span><span>Step 2. Upload your writing</span></div>', unsafe_allow_html=True)
         st.write("Take a clear photo of your writing and upload it here.")
         uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
 
-        st.subheader("Step 3. Submit your writing")
+        st.markdown('<div class="wa-section-title"><span class="wa-section-icon">✅</span><span>Step 3. Submit your writing</span></div>', unsafe_allow_html=True)
         if st.button("Submit for Assessment", type="primary", use_container_width=True):
             if not seat_number.strip() or not student_id.strip() or not student_name.strip():
                 st.warning("Please enter your Seat No., Student ID, and Student Name.")
@@ -813,14 +858,14 @@ if task_id:
         result = st.session_state.get("result")
         if result:
             st.divider()
-            st.header("Your Writing Score")
+            st.markdown('<div class="wa-section-title"><span class="wa-section-icon">🏆</span><span>Your Writing Score</span></div>', unsafe_allow_html=True)
             total = sum(result["scores"][d] for d in RUBRIC)
             st.markdown(
                 f'<div class="totalbox"><div class="meta">Total Score</div><div class="totalnum">{total} / 16</div></div>',
                 unsafe_allow_html=True
             )
 
-            st.subheader("Score Overview")
+            st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📊</span><span>Score Overview</span></div>', unsafe_allow_html=True)
             st.markdown(
                 score_overview_chart(result["scores"]),
                 unsafe_allow_html=True
@@ -842,9 +887,9 @@ if task_id:
 
             if st.session_state.get("show_revision"):
                 st.divider()
-                st.header("Revision Suggestions")
+                st.markdown('<div class="wa-section-title"><span class="wa-section-icon">💡</span><span>Revision Suggestions</span></div>', unsafe_allow_html=True)
 
-                st.subheader("Content & Organization Suggestions")
+                st.markdown('<div class="wa-section-title"><span class="wa-section-icon">🧩</span><span>Content & Organization Suggestions</span></div>', unsafe_allow_html=True)
                 suggestions = result.get("content_organization_suggestions", [])
                 if suggestions:
                     for i, s in enumerate(suggestions, 1):
@@ -860,7 +905,7 @@ if task_id:
                 else:
                     st.write("No additional suggestions.")
 
-                st.subheader("Language Corrections")
+                st.markdown('<div class="wa-section-title"><span class="wa-section-icon">🔤</span><span>Language Corrections</span></div>', unsafe_allow_html=True)
                 st.caption("Grammar • Spelling • Punctuation")
                 corrections = result.get("corrections", [])
                 if not corrections:
