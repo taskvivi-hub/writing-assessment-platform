@@ -177,6 +177,9 @@ def create_task_record(class_name, task_date, title, genre, requirements):
 
 
 def update_task_record(task_id, class_name, task_date, title, genre, requirements):
+    if task_has_submissions(task_id):
+        raise RuntimeError("This task already has student submissions and can no longer be edited.")
+
     payload = {
         "class_name": class_name.strip(),
         "task_date": task_date.isoformat(),
@@ -194,10 +197,23 @@ def update_task_record(task_id, class_name, task_date, title, genre, requirement
 
 
 def delete_task_record(task_id):
+    if task_has_submissions(task_id):
+        raise RuntimeError("This task already has student submissions and cannot be deleted.")
+
     supabase_request(
         "DELETE",
         "tasks",
         params={"id": f"eq.{task_id}"},
+        prefer="return=minimal",
+    )
+
+
+def set_task_closed(task_id, is_closed):
+    supabase_request(
+        "PATCH",
+        "tasks",
+        params={"id": f"eq.{task_id}"},
+        json_body={"is_closed": bool(is_closed)},
         prefer="return=minimal",
     )
 
@@ -209,6 +225,22 @@ def list_submissions():
         params={"select": "*", "order": "submitted_at.desc"},
     )
     return rows or []
+
+
+def submission_count_for_task(task_id):
+    rows = supabase_request(
+        "GET",
+        "submissions",
+        params={
+            "select": "id",
+            "task_id": f"eq.{task_id}",
+        },
+    )
+    return len(rows or [])
+
+
+def task_has_submissions(task_id):
+    return submission_count_for_task(task_id) > 0
 
 
 def submission_exists(task_id, student_name):
@@ -621,6 +653,11 @@ if task_id:
             st.subheader("Task Requirements")
             st.write(task["requirements"])
 
+        if task.get("is_closed", False):
+            st.warning("This task is closed. Submissions are no longer accepted.")
+            st.info("If you think you still need to submit, please contact your teacher.")
+            st.stop()
+
         st.subheader("Step 1. Enter your information")
         st.caption("Use your real name. Each student can submit this task only once.")
         info_c1, info_c2, info_c3 = st.columns([1, 2.2, 2.2])
@@ -790,15 +827,55 @@ else:
                         st.write(f"Genre / Writing Type: {task.get('genre','')}")
                         st.code(student_link(code))
 
-                        c1, c2 = st.columns(2)
+                        is_closed = bool(task.get("is_closed", False))
+                        status_label = "Closed" if is_closed else "Open"
+                        try:
+                            submission_count = submission_count_for_task(code)
+                        except Exception as e:
+                            submission_count = None
+                            st.error(f"Submission count could not be loaded: {e}")
+
+                        if submission_count is None:
+                            st.caption(f"Status: {status_label}")
+                            has_submissions = True
+                        else:
+                            st.caption(f"Status: {status_label} · Submissions: {submission_count}")
+                            has_submissions = submission_count > 0
+
+                        if has_submissions:
+                            st.session_state.pop("editing_task_code", None)
+                            st.session_state.pop("deleting_task_code", None)
+
+                        c1, c2, c3 = st.columns(3)
                         with c1:
-                            if st.button("Edit Task", key=f"edit_{code}", use_container_width=True):
+                            if st.button(
+                                "Edit Task",
+                                key=f"edit_{code}",
+                                use_container_width=True,
+                                disabled=has_submissions,
+                                help="Editing is locked after the first student submission." if has_submissions else None,
+                            ):
                                 st.session_state["editing_task_code"] = code
                         with c2:
-                            if st.button("Delete Task", key=f"delete_{code}", use_container_width=True):
+                            close_label = "Reopen Task" if is_closed else "Close Task"
+                            if st.button(close_label, key=f"close_{code}", use_container_width=True):
+                                set_task_closed(code, not is_closed)
+                                st.success("Task reopened." if is_closed else "Task closed. Students can no longer submit using this link.")
+                                st.rerun()
+                        with c3:
+                            if st.button(
+                                "Delete Task",
+                                key=f"delete_{code}",
+                                use_container_width=True,
+                                disabled=has_submissions,
+                                help="Deletion is locked after the first student submission." if has_submissions else None,
+                            ):
                                 st.session_state["deleting_task_code"] = code
 
-                        if st.session_state.get("editing_task_code") == code:
+                        if has_submissions:
+                            st.caption("Edit and Delete are locked because this task already has student submissions. You can still Close or Reopen it.")
+
+                        if st.session_state.get("editing_task_code") == code and not has_submissions:
                             st.markdown("### Edit Task")
                             edit_class = st.text_input("Class", value=task.get("class_name", ""), key=f"edit_class_{code}")
                             try:
@@ -821,24 +898,30 @@ else:
                                     if not edit_class.strip() or not edit_title.strip() or not edit_genre.strip() or not edit_requirements.strip():
                                         st.warning("Please complete all task fields.")
                                     else:
-                                        update_task_record(code, edit_class, edit_date, edit_title, edit_genre, edit_requirements)
-                                        st.session_state.pop("editing_task_code", None)
-                                        st.success("Task updated.")
-                                        st.rerun()
+                                        try:
+                                            update_task_record(code, edit_class, edit_date, edit_title, edit_genre, edit_requirements)
+                                            st.session_state.pop("editing_task_code", None)
+                                            st.success("Task updated.")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Task could not be updated: {e}")
                             with s2:
                                 if st.button("Cancel", key=f"cancel_edit_{code}", use_container_width=True):
                                     st.session_state.pop("editing_task_code", None)
                                     st.rerun()
 
-                        if st.session_state.get("deleting_task_code") == code:
+                        if st.session_state.get("deleting_task_code") == code and not has_submissions:
                             st.warning("Delete this task? The student link will stop working. Existing submission records will not be deleted.")
                             d1, d2 = st.columns(2)
                             with d1:
                                 if st.button("Yes, Delete", key=f"confirm_delete_{code}", use_container_width=True):
-                                    delete_task_record(code)
-                                    st.session_state.pop("deleting_task_code", None)
-                                    st.success("Task deleted.")
-                                    st.rerun()
+                                    try:
+                                        delete_task_record(code)
+                                        st.session_state.pop("deleting_task_code", None)
+                                        st.success("Task deleted.")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Task could not be deleted: {e}")
                             with d2:
                                 if st.button("Cancel", key=f"cancel_delete_{code}", use_container_width=True):
                                     st.session_state.pop("deleting_task_code", None)
