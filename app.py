@@ -5,6 +5,7 @@ import html
 from datetime import date
 from io import BytesIO
 
+from PIL import Image, ImageOps
 import streamlit as st
 from openai import OpenAI
 from openpyxl import Workbook
@@ -137,6 +138,77 @@ def supabase_request(method, table, *, params=None, json_body=None, prefer=None)
         return response.json()
     except ValueError:
         return []
+
+
+
+
+STORAGE_BUCKET = "writing-submissions"
+
+
+def prepare_storage_image(uploaded_file):
+    raw = uploaded_file.getvalue()
+    try:
+        image = Image.open(BytesIO(raw))
+        image = ImageOps.exif_transpose(image)
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+        elif image.mode == "L":
+            image = image.convert("RGB")
+
+        max_side = 1800
+        if max(image.size) > max_side:
+            scale = max_side / max(image.size)
+            new_size = (max(1, int(image.width * scale)), max(1, int(image.height * scale)))
+            image = image.resize(new_size)
+
+        out = BytesIO()
+        image.save(out, format="JPEG", quality=82, optimize=True)
+        return out.getvalue(), "image/jpeg", ".jpg"
+    except Exception:
+        mime = uploaded_file.type or "image/jpeg"
+        suffix = ".png" if "png" in mime else ".webp" if "webp" in mime else ".jpg"
+        return raw, mime, suffix
+
+
+def upload_submission_image(task_id, student_id, uploaded_file):
+    url, key = get_supabase_config()
+    image_bytes, mime, suffix = prepare_storage_image(uploaded_file)
+    safe_student_id = "".join(ch for ch in student_id.strip() if ch.isalnum() or ch in ("-", "_")) or "student"
+    object_path = f"{task_id}/{safe_student_id}{suffix}"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": mime,
+        "x-upsert": "false",
+    }
+    response = requests.post(
+        f"{url}/storage/v1/object/{STORAGE_BUCKET}/{object_path}",
+        headers=headers,
+        data=image_bytes,
+        timeout=60,
+    )
+    if not response.ok:
+        detail = response.text.strip()
+        raise RuntimeError(f"Submission image could not be stored ({response.status_code}). {detail[:500]}")
+    return object_path
+
+
+def download_submission_image(object_path):
+    if not object_path:
+        return None
+    url, key = get_supabase_config()
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+    }
+    response = requests.get(
+        f"{url}/storage/v1/object/{STORAGE_BUCKET}/{object_path}",
+        headers=headers,
+        timeout=60,
+    )
+    if not response.ok:
+        return None
+    return response.content
 
 
 def list_tasks():
@@ -531,7 +603,7 @@ def assess(uploaded_file, task):
 
 
 
-def save_submission(task, seat_number, student_id, student_name, result):
+def save_submission(task, seat_number, student_id, student_name, result, image_path):
     payload = {
         "task_id": task["id"],
         "class_name": task.get("class_name", ""),
@@ -546,6 +618,8 @@ def save_submission(task, seat_number, student_id, student_name, result):
         "language_score": result["scores"]["Language Use"],
         "genre_score": result["scores"]["Genre & Professional Appropriacy"],
         "total": sum(result["scores"].values()),
+        "image_path": image_path,
+        "transcription": result.get("transcription", ""),
     }
     supabase_request(
         "POST",
@@ -849,7 +923,8 @@ if task_id:
                             if not result.get("image_readable", True):
                                 st.error("The image is not clear enough to read. Please upload a clearer photo.")
                             else:
-                                save_submission(task, seat_number, student_id, student_name, result)
+                                image_path = upload_submission_image(task["id"], student_id, uploaded)
+                                save_submission(task, seat_number, student_id, student_name, result, image_path)
                                 st.session_state["result"] = result
                                 st.session_state["show_revision"] = False
                 except Exception as e:
@@ -1137,6 +1212,43 @@ else:
                 st.dataframe(table_rows, use_container_width=True, hide_index=True)
 
                 if filtered:
+                    st.markdown("### View Submission")
+                    view_options = {
+                        f"{r.get('seat_number','')} | {r.get('student_id','')} | {r.get('student_name','')}": r
+                        for r in filtered
+                    }
+                    selected_label = st.selectbox(
+                        "Choose a student",
+                        ["Select a student"] + list(view_options.keys()),
+                        key="view_submission_student",
+                    )
+                    if selected_label != "Select a student":
+                        selected = view_options[selected_label]
+                        with st.container(border=True):
+                            st.markdown(f"**Student:** {selected.get('student_name','')}  ")
+                            st.markdown(f"**Seat No.:** {selected.get('seat_number','')}  ")
+                            st.markdown(f"**Student ID:** {selected.get('student_id','')}  ")
+                            st.markdown(f"**Task:** {selected.get('task_title','')}  ")
+                            st.markdown(f"**Total:** {selected.get('total','')} / 16")
+
+                            image_bytes = download_submission_image(selected.get("image_path", ""))
+                            if image_bytes:
+                                st.markdown("#### Original Submission")
+                                st.image(image_bytes, use_container_width=True)
+                            else:
+                                st.info("No stored image is available for this submission. Older submissions created before image storage was enabled will not have an image.")
+
+                            transcription = selected.get("transcription", "")
+                            if transcription:
+                                st.markdown("#### AI Transcription")
+                                st.text_area(
+                                    "Transcribed text",
+                                    value=transcription,
+                                    height=220,
+                                    disabled=True,
+                                    key=f"transcription_{selected.get('id','')}",
+                                )
+
                     st.download_button(
                         "Download Results (Excel)",
                         data=build_excel(filtered),
