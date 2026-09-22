@@ -833,22 +833,106 @@ hr{border-color:#dce7f0 !important;margin:1.6rem 0 !important}
   .wa-section-title{font-size:1.2rem}
 }
 
-/* Dark-mode safety: keep custom cards readable even when device/browser uses dark mode */
+/* Force one consistent light UI on every device/browser mode.
+   This prevents iOS/Android dark mode from turning labels or input text invisible. */
+:root, html, body, .stApp{
+  color-scheme: light !important;
+}
+html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"]{
+  background:linear-gradient(180deg,#f8fbff 0%,#f5f9ff 45%,#ffffff 100%) !important;
+  color:#17324d !important;
+}
+/* General Streamlit text */
+.stApp p,.stApp span,.stApp div,.stApp label,.stApp small,
+[data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"]{
+  color:#17324d;
+}
+.stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp h5,.stApp h6{
+  color:#17324d !important;
+}
+/* Field labels and helper text */
+.stTextInput label,.stTextArea label,.stDateInput label,.stSelectbox label,.stFileUploader label,
+[data-testid="stWidgetLabel"] *, [data-testid="stCaptionContainer"] *{
+  color:#17324d !important;
+  -webkit-text-fill-color:#17324d !important;
+  opacity:1 !important;
+}
+/* Text, date, select and textarea controls */
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div,
+div[data-baseweb="select"] > div,
+[data-baseweb="base-input"]{
+  background:#ffffff !important;
+  color:#16324a !important;
+  border-color:#bfd3e6 !important;
+}
+div[data-baseweb="input"] input,
+div[data-baseweb="textarea"] textarea,
+div[data-baseweb="select"] input,
+input, textarea{
+  color:#16324a !important;
+  -webkit-text-fill-color:#16324a !important;
+  caret-color:#16324a !important;
+  background:#ffffff !important;
+}
+input::placeholder, textarea::placeholder{
+  color:#7b8fa4 !important;
+  -webkit-text-fill-color:#7b8fa4 !important;
+  opacity:1 !important;
+}
+/* Selectbox/date input displayed values and icons */
+[data-baseweb="select"] *, [data-baseweb="input"] svg, [data-baseweb="select"] svg{
+  color:#16324a !important;
+  fill:currentColor !important;
+}
+/* Upload area */
+[data-testid="stFileUploaderDropzone"]{
+  background:#f2f8ff !important;
+  border-color:#8fb8e6 !important;
+}
+[data-testid="stFileUploaderDropzone"] *{
+  color:#1d3d5c !important;
+  -webkit-text-fill-color:#1d3d5c !important;
+}
+/* Custom cards */
+.taskbox,.card,.totalbox,.scorechart{
+  background:#ffffff !important;
+  color:#17324d !important;
+  border-color:#d8e6f2 !important;
+}
+.taskbox *,.card *,.totalbox *,.scorechart *,
+.wa-hero-title,.wa-section-title,.wa-field-label,.wa-requirements,.desc-en,.scorebar-value,.scorebar-label{
+  color:#17324d !important;
+}
+.wa-hero-subtitle,.wa-instruction,.meta,.desc-zh{
+  color:#5f7183 !important;
+}
+.wa-hero-icon,.wa-section-icon{
+  background:#eef6ff !important;
+  border-color:#cfe0f1 !important;
+}
+/* Buttons: keep primary blue and secondary white in all modes */
+.stButton > button,.stDownloadButton > button{
+  background:#ffffff !important;
+  color:#17324d !important;
+  -webkit-text-fill-color:#17324d !important;
+}
+.stButton > button[kind="primary"]{
+  background:linear-gradient(135deg,#246bfd,#4f8cff) !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
+.stButton > button *,.stDownloadButton > button *{color:inherit !important;-webkit-text-fill-color:inherit !important}
+/* Alerts and tabs */
+[data-testid="stAlert"] *{color:inherit !important}
+button[data-baseweb="tab"],button[data-baseweb="tab"] *{color:#17324d !important;-webkit-text-fill-color:#17324d !important}
+/* Explicitly neutralize system dark-mode repainting */
 @media (prefers-color-scheme: dark){
-  .stApp{background:linear-gradient(180deg,#101827 0%,#141d2a 45%,#10151d 100%) !important;color:#f4f7fb !important}
-  h1,h2,h3,.taskbox,.card,.totalbox,.scorechart,.cardtitle,.scorebar-value,.scorebar-label,.desc-en{color:#f4f7fb !important}
-  .taskbox,.card,.totalbox,.scorechart{background:#182434 !important;border-color:#31445a !important;box-shadow:none !important}
-  .meta,.desc-zh,.wa-instruction{color:#c4d0dc !important}
-  .wa-requirements{color:#f4f7fb !important}
-  div[data-baseweb="input"] > div,div[data-baseweb="textarea"] > div{background:#111a25 !important;border-color:#40566d !important}
-  div[data-baseweb="input"] input,div[data-baseweb="textarea"] textarea{color:#f4f7fb !important}
-  .stTextInput label,.stTextArea label,.stDateInput label,.stSelectbox label,.stFileUploader label{color:#eef4fa !important}
-  [data-testid="stFileUploaderDropzone"]{background:#152233 !important;border-color:#587ca4 !important}
-  [data-testid="stFileUploaderDropzone"] *{color:#eef4fa !important}
-  .scorebar-track{border-bottom-color:#51657a !important}
-  .wa-hero-icon,.wa-section-icon{background:#1c2b3d !important;border-color:#3c526a !important}
-  .wa-hero-title,.wa-section-title,.wa-field-label{color:#f4f7fb !important}
-  .wa-hero-subtitle{color:#c4d0dc !important}
+  :root,html,body,.stApp{color-scheme:light !important}
+  html,body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{
+    background:linear-gradient(180deg,#f8fbff 0%,#f5f9ff 45%,#ffffff 100%) !important;
+    color:#17324d !important;
+  }
 }
 </style>
 ''', unsafe_allow_html=True)
