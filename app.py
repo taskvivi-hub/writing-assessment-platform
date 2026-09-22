@@ -1021,15 +1021,31 @@ else:
             st.subheader("Teacher Setup")
             st.write("Create a task and share the student link.")
 
-            class_name = st.text_input("Class", placeholder="e.g., English Communication A")
-            task_date = st.date_input("Task Date")
-            title = st.text_input("Task Title", placeholder="e.g., Use of Learning Resources")
-            genre = st.text_input("Genre / Writing Type", placeholder="e.g., Email Body")
+            # If a task was duplicated, load its settings into the main Create Task form.
+            pending_duplicate = st.session_state.pop("pending_duplicate_task", None)
+            if pending_duplicate:
+                st.session_state["create_class"] = pending_duplicate.get("class_name", "")
+                try:
+                    st.session_state["create_date"] = date.fromisoformat(str(pending_duplicate.get("task_date", "")))
+                except Exception:
+                    st.session_state["create_date"] = date.today()
+                st.session_state["create_title"] = pending_duplicate.get("title", "")
+                st.session_state["create_genre"] = pending_duplicate.get("genre", "")
+                st.session_state["create_requirements"] = pending_duplicate.get("requirements", "")
+
+            if st.session_state.pop("show_duplicate_notice", False):
+                st.success("Task copied to the fields above. You can edit any details before creating the new task.")
+
+            class_name = st.text_input("Class", placeholder="e.g., English Communication A", key="create_class")
+            task_date = st.date_input("Task Date", key="create_date")
+            title = st.text_input("Task Title", placeholder="e.g., Use of Learning Resources", key="create_title")
+            genre = st.text_input("Genre / Writing Type", placeholder="e.g., Email Body", key="create_genre")
             requirements = st.text_area(
                 "Task Requirements",
                 placeholder="1. Explain how you have benefited from these resources.\n"
                             "2. Give suggestions about what the department can do to encourage students to use them more.",
-                height=120
+                height=120,
+                key="create_requirements",
             )
 
             if st.button("Create Student Link", type="primary", use_container_width=True):
@@ -1092,11 +1108,13 @@ else:
                                 "Duplicate",
                                 key=f"duplicate_{code}",
                                 use_container_width=True,
-                                help="Create a new task using this task as a starting point.",
+                                help="Copy this task into the Create Task fields above.",
                             ):
-                                st.session_state["duplicating_task_code"] = code
+                                st.session_state["pending_duplicate_task"] = dict(task)
+                                st.session_state["show_duplicate_notice"] = True
                                 st.session_state.pop("editing_task_code", None)
                                 st.session_state.pop("deleting_task_code", None)
+                                st.rerun()
                         with c2:
                             if st.button(
                                 "Edit Task",
@@ -1126,66 +1144,6 @@ else:
 
                         if has_submissions:
                             st.caption("Edit and Delete are locked because this task already has student submissions. Duplicate and Close/Reopen are still available.")
-
-                        if st.session_state.get("duplicating_task_code") == code:
-                            st.markdown("### Duplicate Task")
-                            st.caption("A new task will be created. The original task and all student submissions will stay unchanged.")
-                            duplicate_class = st.text_input(
-                                "Class",
-                                value=task.get("class_name", ""),
-                                key=f"duplicate_class_{code}",
-                            )
-                            duplicate_date = st.date_input(
-                                "Task Date",
-                                value=date.today(),
-                                key=f"duplicate_date_{code}",
-                            )
-                            duplicate_title = st.text_input(
-                                "Task Title",
-                                value=task.get("title", ""),
-                                key=f"duplicate_title_{code}",
-                            )
-                            duplicate_genre = st.text_input(
-                                "Genre / Writing Type",
-                                value=task.get("genre", ""),
-                                key=f"duplicate_genre_{code}",
-                            )
-                            duplicate_requirements = st.text_area(
-                                "Task Requirements",
-                                value=task.get("requirements", ""),
-                                key=f"duplicate_req_{code}",
-                                height=120,
-                            )
-
-                            dupe_c1, dupe_c2 = st.columns(2)
-                            with dupe_c1:
-                                if st.button(
-                                    "Create New Task",
-                                    key=f"create_duplicate_{code}",
-                                    type="primary",
-                                    use_container_width=True,
-                                ):
-                                    if not duplicate_class.strip() or not duplicate_title.strip() or not duplicate_genre.strip() or not duplicate_requirements.strip():
-                                        st.warning("Please complete all task fields.")
-                                    else:
-                                        try:
-                                            new_task = create_task_record(
-                                                duplicate_class,
-                                                duplicate_date,
-                                                duplicate_title,
-                                                duplicate_genre,
-                                                duplicate_requirements,
-                                            )
-                                            st.session_state["created_link"] = student_link(new_task["id"])
-                                            st.session_state.pop("duplicating_task_code", None)
-                                            st.success("New task created from the duplicate. It is open and has a new student link.")
-                                            st.rerun()
-                                        except Exception as e:
-                                            st.error(f"Duplicated task could not be created: {e}")
-                            with dupe_c2:
-                                if st.button("Cancel", key=f"cancel_duplicate_{code}", use_container_width=True):
-                                    st.session_state.pop("duplicating_task_code", None)
-                                    st.rerun()
 
                         if st.session_state.get("editing_task_code") == code and not has_submissions:
                             st.markdown("### Edit Task")
@@ -1223,7 +1181,7 @@ else:
                                     st.rerun()
 
                         if st.session_state.get("deleting_task_code") == code and not has_submissions:
-                            st.warning("Delete this task? The student link will stop working. Existing submission records will not be deleted.")
+                            st.warning("Are you sure you want to delete this task? The student link will stop working. This action cannot be undone. Existing submission records will not be deleted.")
                             d1, d2 = st.columns(2)
                             with d1:
                                 if st.button("Yes, Delete", key=f"confirm_delete_{code}", use_container_width=True):
