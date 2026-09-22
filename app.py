@@ -1086,8 +1086,18 @@ else:
                             st.session_state.pop("editing_task_code", None)
                             st.session_state.pop("deleting_task_code", None)
 
-                        c1, c2, c3 = st.columns(3)
+                        c1, c2, c3, c4 = st.columns(4)
                         with c1:
+                            if st.button(
+                                "Duplicate",
+                                key=f"duplicate_{code}",
+                                use_container_width=True,
+                                help="Create a new task using this task as a starting point.",
+                            ):
+                                st.session_state["duplicating_task_code"] = code
+                                st.session_state.pop("editing_task_code", None)
+                                st.session_state.pop("deleting_task_code", None)
+                        with c2:
                             if st.button(
                                 "Edit Task",
                                 key=f"edit_{code}",
@@ -1096,13 +1106,14 @@ else:
                                 help="Editing is locked after the first student submission." if has_submissions else None,
                             ):
                                 st.session_state["editing_task_code"] = code
-                        with c2:
+                                st.session_state.pop("duplicating_task_code", None)
+                        with c3:
                             close_label = "Reopen Task" if is_closed else "Close Task"
                             if st.button(close_label, key=f"close_{code}", use_container_width=True):
                                 set_task_closed(code, not is_closed)
                                 st.success("Task reopened." if is_closed else "Task closed. Students can no longer submit using this link.")
                                 st.rerun()
-                        with c3:
+                        with c4:
                             if st.button(
                                 "Delete Task",
                                 key=f"delete_{code}",
@@ -1111,9 +1122,70 @@ else:
                                 help="Deletion is locked after the first student submission." if has_submissions else None,
                             ):
                                 st.session_state["deleting_task_code"] = code
+                                st.session_state.pop("duplicating_task_code", None)
 
                         if has_submissions:
-                            st.caption("Edit and Delete are locked because this task already has student submissions. You can still Close or Reopen it.")
+                            st.caption("Edit and Delete are locked because this task already has student submissions. Duplicate and Close/Reopen are still available.")
+
+                        if st.session_state.get("duplicating_task_code") == code:
+                            st.markdown("### Duplicate Task")
+                            st.caption("A new task will be created. The original task and all student submissions will stay unchanged.")
+                            duplicate_class = st.text_input(
+                                "Class",
+                                value=task.get("class_name", ""),
+                                key=f"duplicate_class_{code}",
+                            )
+                            duplicate_date = st.date_input(
+                                "Task Date",
+                                value=date.today(),
+                                key=f"duplicate_date_{code}",
+                            )
+                            duplicate_title = st.text_input(
+                                "Task Title",
+                                value=task.get("title", ""),
+                                key=f"duplicate_title_{code}",
+                            )
+                            duplicate_genre = st.text_input(
+                                "Genre / Writing Type",
+                                value=task.get("genre", ""),
+                                key=f"duplicate_genre_{code}",
+                            )
+                            duplicate_requirements = st.text_area(
+                                "Task Requirements",
+                                value=task.get("requirements", ""),
+                                key=f"duplicate_req_{code}",
+                                height=120,
+                            )
+
+                            dupe_c1, dupe_c2 = st.columns(2)
+                            with dupe_c1:
+                                if st.button(
+                                    "Create New Task",
+                                    key=f"create_duplicate_{code}",
+                                    type="primary",
+                                    use_container_width=True,
+                                ):
+                                    if not duplicate_class.strip() or not duplicate_title.strip() or not duplicate_genre.strip() or not duplicate_requirements.strip():
+                                        st.warning("Please complete all task fields.")
+                                    else:
+                                        try:
+                                            new_task = create_task_record(
+                                                duplicate_class,
+                                                duplicate_date,
+                                                duplicate_title,
+                                                duplicate_genre,
+                                                duplicate_requirements,
+                                            )
+                                            st.session_state["created_link"] = student_link(new_task["id"])
+                                            st.session_state.pop("duplicating_task_code", None)
+                                            st.success("New task created from the duplicate. It is open and has a new student link.")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Duplicated task could not be created: {e}")
+                            with dupe_c2:
+                                if st.button("Cancel", key=f"cancel_duplicate_{code}", use_container_width=True):
+                                    st.session_state.pop("duplicating_task_code", None)
+                                    st.rerun()
 
                         if st.session_state.get("editing_task_code") == code and not has_submissions:
                             st.markdown("### Edit Task")
