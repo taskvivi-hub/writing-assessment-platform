@@ -721,7 +721,7 @@ p, label, .stCaption{line-height:1.6}
   letter-spacing:-.02em;
 }
 .wa-hero-subtitle{
-  margin-top:.4rem;color:var(--wa-muted);font-size:1rem;
+  margin-top:.45rem;color:var(--wa-muted);font-size:1.14rem;line-height:1.6;font-weight:600;
 }
 .wa-section-title{
   display:flex;align-items:center;gap:.65rem;
@@ -733,7 +733,9 @@ p, label, .stCaption{line-height:1.6}
   border-radius:11px;background:var(--wa-soft);border:1px solid #cfe0f1;
   font-size:1.15rem;flex:0 0 auto;
 }
-.wa-field-label{font-weight:800;color:var(--wa-text);font-size:1rem;margin-bottom:.25rem}
+.wa-field-label{font-weight:800;color:var(--wa-text);font-size:1.1rem;margin-bottom:.25rem}
+.wa-instruction{font-size:1.1rem;line-height:1.7;color:var(--wa-muted);font-weight:600;margin:.2rem 0 .7rem}
+.wa-requirements{font-size:1.12rem;line-height:1.85;color:var(--wa-text);margin:.15rem 0 .85rem}
 
 /* task and result cards */
 .taskbox,.card,.totalbox,.scorechart{
@@ -743,7 +745,7 @@ p, label, .stCaption{line-height:1.6}
   border-radius:20px;
   box-shadow:var(--wa-shadow);
 }
-.taskbox{padding:1.25rem 1.35rem;margin:1rem 0 1.25rem;font-size:1.02rem;line-height:1.8;border-left:7px solid var(--wa-primary)}
+.taskbox{padding:1.3rem 1.4rem;margin:1rem 0 1.25rem;font-size:1.13rem;line-height:1.9;border-left:7px solid var(--wa-primary)}
 .card{padding:1.2rem 1.35rem;margin:.9rem 0}
 .totalbox{text-align:center;border-width:1px;padding:1.25rem 1rem;margin:1rem 0 1.3rem;background:linear-gradient(135deg,#eff6ff,#ffffff)}
 .totalnum{font-size:2.7rem;font-weight:850;color:var(--wa-primary);letter-spacing:.02em}
@@ -774,7 +776,7 @@ div[data-baseweb="textarea"] textarea{
   color:#16324a !important;
   font-size:1rem !important;
 }
-.stTextInput label,.stTextArea label,.stDateInput label,.stSelectbox label,.stFileUploader label{font-weight:800 !important;color:var(--wa-text) !important;font-size:1rem !important}
+.stTextInput label,.stTextArea label,.stDateInput label,.stSelectbox label,.stFileUploader label{font-weight:800 !important;color:var(--wa-text) !important;font-size:1.1rem !important}
 
 /* Buttons */
 .stButton > button, .stDownloadButton > button{
@@ -799,7 +801,7 @@ div[data-baseweb="textarea"] textarea{
   border-radius:18px !important;
   padding:1.1rem !important;
 }
-[data-testid="stFileUploaderDropzone"] *{color:#1d3d5c !important}
+[data-testid="stFileUploaderDropzone"] *{color:#1d3d5c !important;font-size:1.02rem !important}
 
 /* Tabs and status messages */
 button[data-baseweb="tab"]{font-size:1rem !important;font-weight:800 !important}
@@ -815,7 +817,11 @@ hr{border-color:#dce7f0 !important;margin:1.6rem 0 !important}
   .block-container{padding-top:1.25rem;padding-left:1rem;padding-right:1rem}
   h1{font-size:2rem !important}
   h2{font-size:1.45rem !important}
-  .taskbox{padding:1.05rem 1rem;font-size:.98rem}
+  .taskbox{padding:1.05rem 1rem;font-size:1.05rem}
+  .wa-hero-subtitle{font-size:1.05rem}
+  .wa-instruction{font-size:1.03rem}
+  .wa-requirements{font-size:1.05rem}
+  .stTextInput label,.stFileUploader label{font-size:1.03rem !important}
   .totalnum{font-size:2.35rem}
   .scorechart{gap:6px;padding:18px 6px 14px}
   .scorebar-item{min-width:0;width:25%}
@@ -832,7 +838,8 @@ hr{border-color:#dce7f0 !important;margin:1.6rem 0 !important}
   .stApp{background:linear-gradient(180deg,#101827 0%,#141d2a 45%,#10151d 100%) !important;color:#f4f7fb !important}
   h1,h2,h3,.taskbox,.card,.totalbox,.scorechart,.cardtitle,.scorebar-value,.scorebar-label,.desc-en{color:#f4f7fb !important}
   .taskbox,.card,.totalbox,.scorechart{background:#182434 !important;border-color:#31445a !important;box-shadow:none !important}
-  .meta,.desc-zh{color:#c4d0dc !important}
+  .meta,.desc-zh,.wa-instruction{color:#c4d0dc !important}
+  .wa-requirements{color:#f4f7fb !important}
   div[data-baseweb="input"] > div,div[data-baseweb="textarea"] > div{background:#111a25 !important;border-color:#40566d !important}
   div[data-baseweb="input"] input,div[data-baseweb="textarea"] textarea{color:#f4f7fb !important}
   .stTextInput label,.stTextArea label,.stDateInput label,.stSelectbox label,.stFileUploader label{color:#eef4fa !important}
@@ -867,7 +874,7 @@ if task_id:
             """<div class="wa-hero">
                 <div class="wa-hero-icon">✍️</div>
                 <div class="wa-hero-title">Writing Assessment</div>
-                <div class="wa-hero-subtitle">Follow the steps below to check your writing.</div>
+                <div class="wa-hero-subtitle">Follow the steps below to check your writing. Each student can submit only once.</div>
             </div>""",
             unsafe_allow_html=True
         )
@@ -882,7 +889,8 @@ if task_id:
 
         if task.get("requirements"):
             st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📝</span><span>Task Requirements</span></div>', unsafe_allow_html=True)
-            st.write(task["requirements"])
+            req_html = html.escape(task["requirements"]).replace("\n", "<br>")
+            st.markdown(f'<div class="wa-requirements">{req_html}</div>', unsafe_allow_html=True)
 
         if task.get("is_closed", False):
             st.warning("This task is closed. Submissions are no longer accepted.")
@@ -890,7 +898,7 @@ if task_id:
             st.stop()
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">👤</span><span>Step 1. Enter your information</span></div>', unsafe_allow_html=True)
-        st.caption("Use your real name. Each student can submit this task only once.")
+        st.markdown('<div class="wa-instruction">Use your real name. Each student can submit this task only once.</div>', unsafe_allow_html=True)
         info_c1, info_c2, info_c3 = st.columns([1, 2.2, 2.2])
         with info_c1:
             seat_number = st.text_input("🔢 Seat No.", max_chars=2, placeholder="e.g., 1 or 12")
@@ -900,7 +908,7 @@ if task_id:
             student_name = st.text_input("👤 Student Name")
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📷</span><span>Step 2. Upload your writing</span></div>', unsafe_allow_html=True)
-        st.write("Take a clear photo of your writing and upload it here.")
+        st.markdown('<div class="wa-instruction">Take a clear photo of your writing and upload it here. Each student can upload only once.</div>', unsafe_allow_html=True)
         uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">✅</span><span>Step 3. Submit your writing</span></div>', unsafe_allow_html=True)
