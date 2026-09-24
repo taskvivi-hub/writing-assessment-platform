@@ -1117,6 +1117,26 @@ button[data-baseweb="tab"],button[data-baseweb="tab"] *{color:#17324d !important
   display:none !important;
 }
 
+
+/* Replace Streamlit's blank/dark uploaded-file tile with a real document icon. */
+[data-testid="stFileUploaderFile"] > div:first-child{
+  display:none !important;
+}
+[data-testid="stFileUploaderFile"]::before{
+  content:"📄";
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  margin-right:8px;
+  border-radius:8px;
+  background:#eef6ff;
+  font-size:20px;
+  line-height:1;
+  flex:0 0 auto;
+}
+
 </style>
 ''', unsafe_allow_html=True)
 
