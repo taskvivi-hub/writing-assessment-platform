@@ -573,6 +573,9 @@ Identify ALL clear, genuine errors in these categories:
 - Spelling
 - Punctuation
 - Capitalization
+- Sentence Structure
+
+Use Sentence Structure for problems such as sentence fragments, run-on sentences, comma splices, incorrect word order, incomplete or malformed clauses, or sentence patterns that make the intended meaning unclear. Do not use Sentence Structure for mere style preferences.
 
 Do not impose an artificial maximum number of corrections. If there are many genuine errors, list all of them.
 For every error:
@@ -607,7 +610,7 @@ The values "<score 0-4>" below are placeholders. Use 0 only when the language-of
   }},
   "corrections": [
     {{
-      "type": "Grammar",
+      "type": "Grammar | Spelling | Punctuation | Capitalization | Sentence Structure",
       "original": "student text",
       "correction": "corrected text",
       "explanation_zh": "簡短的繁體中文說明"
@@ -1178,10 +1181,10 @@ if task_id:
                     st.write("No additional suggestions.")
 
                 st.markdown('<div class="wa-section-title"><span class="wa-section-icon">🔤</span><span>Language Corrections</span></div>', unsafe_allow_html=True)
-                st.caption("Grammar • Spelling • Punctuation")
+                st.caption("Grammar • Spelling • Punctuation • Capitalization • Sentence Structure")
                 corrections = result.get("corrections", [])
                 if not corrections:
-                    st.success("No clear grammar, spelling, or punctuation errors were found.")
+                    st.success("No clear grammar, spelling, punctuation, capitalization, or sentence structure errors were found.")
                 else:
                     for i, c in enumerate(corrections, 1):
                         error_type = c.get("type", "Correction")
