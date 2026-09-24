@@ -1137,6 +1137,45 @@ button[data-baseweb="tab"],button[data-baseweb="tab"] *{color:#17324d !important
   flex:0 0 auto;
 }
 
+
+/* Custom uploaded-file card used after upload is complete. */
+.wa-upload-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#f7fbff;
+  border:1px solid #cfe0f1;
+  border-radius:14px;
+  padding:12px 14px;
+  margin:.45rem 0 .55rem;
+}
+.wa-upload-doc{
+  width:38px;
+  height:38px;
+  flex:0 0 38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  background:#eaf3ff;
+}
+.wa-upload-doc svg{
+  width:22px;
+  height:22px;
+  display:block;
+}
+.wa-upload-name{
+  font-weight:800;
+  color:#17324d;
+  line-height:1.35;
+  word-break:break-all;
+}
+.wa-upload-size{
+  color:#5f7183;
+  font-size:.9rem;
+  margin-top:2px;
+}
+
 </style>
 ''', unsafe_allow_html=True)
 
@@ -1196,13 +1235,58 @@ if task_id:
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📷</span><span>Step 2. Upload your writing</span></div>', unsafe_allow_html=True)
         st.markdown('<div class="wa-instruction">Take a clear photo of your writing and upload it here. Wait until you see <b>Upload complete</b> before pressing Submit.</div>', unsafe_allow_html=True)
-        uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
+
+        if "upload_widget_version" not in st.session_state:
+            st.session_state["upload_widget_version"] = 0
+
+        uploaded = st.file_uploader(
+            "Choose an image",
+            type=["jpg", "jpeg", "png", "webp"],
+            key=f"writing_upload_{st.session_state['upload_widget_version']}",
+        )
 
         if uploaded is None:
             st.info("Choose your photo and wait until the upload is complete.")
         else:
+            # Hide Streamlit's native uploaded-file row completely after upload.
+            # This avoids the browser/Streamlit-specific blank or dark square icon.
+            st.markdown(
+                """<style>
+                [data-testid="stFileUploader"]{display:none !important;}
+                </style>""",
+                unsafe_allow_html=True,
+            )
             size_mb = len(uploaded.getvalue()) / (1024 * 1024)
-            st.success(f"✅ Upload complete: {uploaded.name} ({size_mb:.2f} MB)")
+            safe_name = html.escape(uploaded.name)
+            st.markdown(
+                f"""
+                <div class="wa-upload-card">
+                  <div class="wa-upload-doc" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 2.75h6.7L19.25 8.3V21.25H7V2.75Z"
+                            fill="#4F8CFF" opacity=".18"/>
+                      <path d="M13.5 2.75V8.5H19.25"
+                            stroke="#246BFD" stroke-width="1.8"
+                            stroke-linejoin="round"/>
+                      <path d="M7 2.75h6.5L19.25 8.5V21.25H7V2.75Z"
+                            stroke="#246BFD" stroke-width="1.8"
+                            stroke-linejoin="round"/>
+                      <path d="M9.5 12.25H16.5M9.5 15.5H16.5M9.5 18.75H14.5"
+                            stroke="#246BFD" stroke-width="1.6"
+                            stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="wa-upload-name">{safe_name}</div>
+                    <div class="wa-upload-size">{size_mb:.2f} MB · Upload complete</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button("Choose a different photo", use_container_width=False):
+                st.session_state["upload_widget_version"] += 1
+                st.rerun()
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">✅</span><span>Step 3. Submit your writing</span></div>', unsafe_allow_html=True)
         if uploaded is None:
