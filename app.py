@@ -995,6 +995,27 @@ input::placeholder, textarea::placeholder{
   color:#1d3d5c !important;
   -webkit-text-fill-color:#1d3d5c !important;
 }
+/* Uploaded file chip/icon: make the file icon light instead of the default dark tile */
+[data-testid="stFileUploaderFile"]{
+  background:#f7fbff !important;
+  border:1px solid #cfe0f1 !important;
+  border-radius:12px !important;
+}
+[data-testid="stFileUploaderFile"] svg{
+  color:#ffffff !important;
+  fill:#ffffff !important;
+  stroke:#ffffff !important;
+}
+[data-testid="stFileUploaderFile"] > div:first-child,
+[data-testid="stFileUploaderFile"] [data-testid="stFileUploaderFileIcon"]{
+  background:#6f9fd0 !important;
+  color:#ffffff !important;
+  border-radius:9px !important;
+}
+[data-testid="stFileUploaderFile"] > div:first-child *{
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
 /* Custom cards */
 .taskbox,.card,.totalbox,.scorechart{
   background:#ffffff !important;
