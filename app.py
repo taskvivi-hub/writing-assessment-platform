@@ -417,6 +417,17 @@ def score_overview_chart(scores):
     return '<div class="scorechart">' + ''.join(bars) + '</div>'
 
 
+def response_requires_zero(transcription):
+    text = (transcription or "").strip()
+    if not text:
+        return False
+    latin_letters = sum(ch.isascii() and ch.isalpha() for ch in text)
+    cjk_chars = sum(("\u4e00" <= ch <= "\u9fff") or ("\u3400" <= ch <= "\u4dbf") for ch in text)
+    # If the response is predominantly Chinese/non-English rather than English,
+    # treat it as a language-of-response violation for this English writing assessment.
+    return cjk_chars >= 8 and cjk_chars > latin_letters
+
+
 def build_prompt(task):
     requirements = task.get("requirements", "").strip()
     rubric_text = rubric_for_prompt()
@@ -464,8 +475,15 @@ If the response is MINIMALLY ON TASK / LARGELY OFF TOPIC:
 - Genre should be 1 when the response does not carry out the assigned communicative purpose or genre in a meaningful way.
 - Do not reward an off-topic response with high scores simply because it is readable, grammatical, long, or locally coherent.
 
+LANGUAGE-OF-RESPONSE OVERRIDE
+This is an ENGLISH writing assessment.
+- If the student writes the response predominantly in Chinese or another non-English language instead of English, set ALL FOUR dimension scores to 0.
+- This 0-score rule overrides the normal 1-4 rubric because the student did not provide an English response to the assigned English writing task.
+- Do not apply this rule for an English response that only contains a few isolated Chinese words, names, labels, or necessary proper nouns.
+- Preserve the student's original language faithfully in transcription; do not translate it before deciding this rule.
+
 ASSESSMENT RULES
-Evaluate exactly these four dimensions. Give an INTEGER score from 1 to 4 for each:
+Evaluate exactly these four dimensions. Normally give an INTEGER score from 1 to 4 for each, except the language-of-response override above may require 0 for all four:
 1. Content & Task Fulfillment
 2. Organization & Coherence
 3. Language Use
@@ -542,7 +560,7 @@ Before returning the JSON, verify:
 
 IMPORTANT TASK RULES
 - No half points.
-- Scores must be 1, 2, 3, or 4. There is no score 0 in the current rubric.
+- Normal rubric scores are 1, 2, 3, or 4. Score 0 is reserved only for the language-of-response override when the response is predominantly not written in English.
 - Evaluate only the writing the student is required to produce.
 - Some assignments may already provide fixed genre elements outside the student's response, such as a subject line, greeting, opening, closing, or signature.
 - Do NOT penalize a student for omitting any element that is not explicitly required in Task Requirements.
@@ -575,16 +593,17 @@ For each suggestion, provide:
 Do not provide a model essay.
 
 Return VALID JSON ONLY.
-The values "<score 1-4>" below are placeholders. Replace each one with the student's actual integer score.
+The values "<score 0-4>" below are placeholders. Use 0 only when the language-of-response override applies; otherwise use 1-4.
 
 {{
   "image_readable": true,
   "transcription": "faithful transcription",
+  "english_response": true,
   "scores": {{
-    "Content & Task Fulfillment": "<score 1-4>",
-    "Organization & Coherence": "<score 1-4>",
-    "Language Use": "<score 1-4>",
-    "Genre & Professional Appropriacy": "<score 1-4>"
+    "Content & Task Fulfillment": "<score 0-4>",
+    "Organization & Coherence": "<score 0-4>",
+    "Language Use": "<score 0-4>",
+    "Genre & Professional Appropriacy": "<score 0-4>"
   }},
   "corrections": [
     {{
@@ -626,11 +645,23 @@ def assess(uploaded_file, task):
         if raw.lower().startswith("json"):
             raw = raw[4:].strip()
     result = json.loads(raw)
-    for dim in RUBRIC:
-        score = int(result["scores"][dim])
-        if score not in (1, 2, 3, 4):
-            raise ValueError(f"Invalid score for {dim}")
-        result["scores"][dim] = score
+
+    transcription = result.get("transcription", "")
+    model_says_english = result.get("english_response", True)
+    force_zero = (model_says_english is False) or response_requires_zero(transcription)
+
+    if force_zero:
+        result["english_response"] = False
+        result["scores"] = {dim: 0 for dim in RUBRIC}
+        result["corrections"] = []
+        result["content_organization_suggestions"] = []
+    else:
+        result["english_response"] = True
+        for dim in RUBRIC:
+            score = int(result["scores"][dim])
+            if score not in (1, 2, 3, 4):
+                raise ValueError(f"Invalid score for {dim}")
+            result["scores"][dim] = score
     return result
 
 
@@ -1073,7 +1104,11 @@ if task_id:
 
             for dim, levels in RUBRIC.items():
                 score = result["scores"][dim]
-                desc_en, desc_zh = levels[score]
+                if score == 0:
+                    desc_en = "The response was not written predominantly in English, so this English writing assessment receives 0 for this dimension."
+                    desc_zh = "作答內容主要不是以英文書寫，因此本英文寫作評量此向度為 0 分。"
+                else:
+                    desc_en, desc_zh = levels[score]
                 st.markdown(
                     f'<div class="card"><span class="cardtitle">{html.escape(dim)}</span>'
                     f'<span class="score">{score}/4</span>'
@@ -1082,10 +1117,12 @@ if task_id:
                     unsafe_allow_html=True
                 )
 
-            if st.button("See Revision Suggestions", use_container_width=True):
+            if not result.get("english_response", True):
+                st.info("This response was not written predominantly in English. Please complete the assigned task in English.")
+            elif st.button("See Revision Suggestions", use_container_width=True):
                 st.session_state["show_revision"] = True
 
-            if st.session_state.get("show_revision"):
+            if result.get("english_response", True) and st.session_state.get("show_revision"):
                 st.divider()
                 st.markdown('<div class="wa-section-title"><span class="wa-section-icon">💡</span><span>Revision Suggestions</span></div>', unsafe_allow_html=True)
 
