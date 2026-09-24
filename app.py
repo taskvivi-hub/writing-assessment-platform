@@ -629,22 +629,57 @@ def assess(uploaded_file, task):
         raise RuntimeError("OPENAI_API_KEY is not configured.")
 
     client = OpenAI(api_key=api_key)
-    response = client.responses.create(
-        model=model,
-        input=[{
-            "role": "user",
-            "content": [
-                {"type": "input_text", "text": build_prompt(task)},
-                {"type": "input_image", "image_url": image_to_data_url(uploaded_file)}
-            ]
-        }]
-    )
-    raw = response.output_text.strip()
-    if raw.startswith("```"):
-        raw = raw.strip("`").strip()
-        if raw.lower().startswith("json"):
-            raw = raw[4:].strip()
-    result = json.loads(raw)
+    request_input = [{
+        "role": "user",
+        "content": [
+            {"type": "input_text", "text": build_prompt(task)},
+            {"type": "input_image", "image_url": image_to_data_url(uploaded_file)}
+        ]
+    }]
+
+    last_error = None
+    result = None
+
+    # Whole-class submissions can arrive in a short burst. Retry transient OpenAI
+    # failures (rate limits, timeouts, temporary server errors) with backoff.
+    for attempt in range(3):
+        try:
+            response = client.responses.create(
+                model=model,
+                input=request_input,
+                timeout=120,
+            )
+            raw = response.output_text.strip()
+            if raw.startswith("```"):
+                raw = raw.strip("`").strip()
+                if raw.lower().startswith("json"):
+                    raw = raw[4:].strip()
+            result = json.loads(raw)
+            break
+        except Exception as e:
+            last_error = e
+            status_code = getattr(e, "status_code", None)
+            retryable = status_code in (408, 409, 425, 429, 500, 502, 503, 504)
+            name = type(e).__name__.lower()
+            if any(token in name for token in ("timeout", "connection", "ratelimit", "internalserver")):
+                retryable = True
+
+            # A malformed/truncated JSON response can also happen during a transient
+            # failure. One or two retries are safer than immediately failing a student.
+            if isinstance(e, json.JSONDecodeError):
+                retryable = True
+
+            if not retryable or attempt == 2:
+                break
+
+            time.sleep(1.5 * (2 ** attempt))
+
+    if result is None:
+        raise RuntimeError(
+            "The assessment service is temporarily busy or unavailable. "
+            "Please wait about 20–30 seconds and try again. "
+            "This attempt has not been recorded as a submission."
+        ) from last_error
 
     transcription = result.get("transcription", "")
     model_says_english = result.get("english_response", True)
