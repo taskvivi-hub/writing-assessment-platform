@@ -2,6 +2,8 @@ import os
 import json
 import base64
 import html
+import hashlib
+import time
 from datetime import date
 from io import BytesIO
 
@@ -116,28 +118,38 @@ def supabase_request(method, table, *, params=None, json_body=None, prefer=None)
     if prefer:
         headers["Prefer"] = prefer
 
-    response = requests.request(
-        method,
-        f"{url}/rest/v1/{table}",
-        headers=headers,
-        params=params,
-        json=json_body,
-        timeout=30,
-    )
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = requests.request(
+                method,
+                f"{url}/rest/v1/{table}",
+                headers=headers,
+                params=params,
+                json=json_body,
+                timeout=45,
+            )
+            if response.ok:
+                if not response.content:
+                    return []
+                try:
+                    return response.json()
+                except ValueError:
+                    return []
 
-    if not response.ok:
-        detail = response.text.strip()
-        raise RuntimeError(
-            f"Supabase request failed ({response.status_code}). "
-            f"{detail[:500]}"
-        )
+            detail = response.text.strip()
+            last_error = RuntimeError(
+                f"Supabase request failed ({response.status_code}). {detail[:500]}"
+            )
+            if response.status_code not in (408, 425, 429, 500, 502, 503, 504):
+                raise last_error
+        except (requests.Timeout, requests.ConnectionError) as e:
+            last_error = e
 
-    if not response.content:
-        return []
-    try:
-        return response.json()
-    except ValueError:
-        return []
+        if attempt < 2:
+            time.sleep(1.2 * (attempt + 1))
+
+    raise RuntimeError(f"Supabase request failed after retries. {last_error}")
 
 
 
@@ -170,27 +182,47 @@ def prepare_storage_image(uploaded_file):
         return raw, mime, suffix
 
 
-def upload_submission_image(task_id, student_id, uploaded_file):
+def upload_submission_image(task_id, student_id, student_name, uploaded_file):
     url, key = get_supabase_config()
     image_bytes, mime, suffix = prepare_storage_image(uploaded_file)
     safe_student_id = "".join(ch for ch in student_id.strip() if ch.isalnum() or ch in ("-", "_")) or "student"
-    object_path = f"{task_id}/{safe_student_id}{suffix}"
+    normalized_name = " ".join(student_name.strip().lower().split())
+    name_hash = hashlib.sha256(normalized_name.encode("utf-8")).hexdigest()[:12]
+    object_path = f"{task_id}/{safe_student_id}_{name_hash}{suffix}"
     headers = {
         "apikey": key,
         "Authorization": f"Bearer {key}",
         "Content-Type": mime,
-        "x-upsert": "false",
+        # Idempotent retry: if a previous attempt stored the image but failed later,
+        # a retry should replace the same object instead of returning 409 Duplicate.
+        "x-upsert": "true",
     }
-    response = requests.post(
-        f"{url}/storage/v1/object/{STORAGE_BUCKET}/{object_path}",
-        headers=headers,
-        data=image_bytes,
-        timeout=60,
-    )
-    if not response.ok:
-        detail = response.text.strip()
-        raise RuntimeError(f"Submission image could not be stored ({response.status_code}). {detail[:500]}")
-    return object_path
+
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                f"{url}/storage/v1/object/{STORAGE_BUCKET}/{object_path}",
+                headers=headers,
+                data=image_bytes,
+                timeout=90,
+            )
+            if response.ok:
+                return object_path
+
+            detail = response.text.strip()
+            last_error = RuntimeError(
+                f"Submission image could not be stored ({response.status_code}). {detail[:500]}"
+            )
+            if response.status_code not in (408, 425, 429, 500, 502, 503, 504):
+                raise last_error
+        except (requests.Timeout, requests.ConnectionError) as e:
+            last_error = e
+
+        if attempt < 2:
+            time.sleep(1.5 * (attempt + 1))
+
+    raise RuntimeError(f"Submission image could not be stored after retries. {last_error}")
 
 
 def download_submission_image(object_path):
@@ -1015,12 +1047,13 @@ if task_id:
                             if not result.get("image_readable", True):
                                 st.error("The image is not clear enough to read. Please upload a clearer photo.")
                             else:
-                                image_path = upload_submission_image(task["id"], student_id, uploaded)
+                                image_path = upload_submission_image(task["id"], student_id, student_name, uploaded)
                                 save_submission(task, seat_number, student_id, student_name, result, image_path)
                                 st.session_state["result"] = result
                                 st.session_state["show_revision"] = False
                 except Exception as e:
                     st.error(f"Assessment could not be completed: {e}")
+                    st.info("Your submission was not completed. You may try again. If this message appears again, please show it to your teacher.")
 
         result = st.session_state.get("result")
         if result:
@@ -1283,6 +1316,7 @@ else:
 
         with tab2:
             st.subheader("Results")
+            st.markdown("### Find Student Submission")
             try:
                 submissions = list_submissions()
             except Exception as e:
@@ -1292,89 +1326,155 @@ else:
             if not submissions:
                 st.info("No student submissions yet.")
             else:
-                classes = sorted({r.get("class_name", "") for r in submissions if r.get("class_name", "")})
-                titles = sorted({r.get("task_title", "") for r in submissions if r.get("task_title", "")})
-                dates = sorted({str(r.get("task_date", "")) for r in submissions if r.get("task_date", "")})
+                # 1) Class
+                classes = sorted({str(r.get("class_name", "")).strip() for r in submissions if str(r.get("class_name", "")).strip()})
+                selected_class = st.selectbox(
+                    "Class",
+                    classes,
+                    key="results_class",
+                )
 
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    class_filter = st.selectbox("Class", ["All"] + classes)
-                with c2:
-                    date_filter = st.selectbox("Task Date", ["All"] + dates)
-                with c3:
-                    title_filter = st.selectbox("Task Title", ["All"] + titles)
+                class_rows = [r for r in submissions if str(r.get("class_name", "")).strip() == selected_class]
 
-                filtered = []
-                for r in submissions:
-                    if class_filter != "All" and r.get("class_name") != class_filter:
-                        continue
-                    if date_filter != "All" and str(r.get("task_date", "")) != date_filter:
-                        continue
-                    if title_filter != "All" and r.get("task_title") != title_filter:
-                        continue
-                    filtered.append(r)
+                # 2) Task: use task_id as the real value so duplicated/similarly named tasks remain distinct.
+                task_map = {}
+                for r in class_rows:
+                    task_id_value = str(r.get("task_id", "")).strip()
+                    if not task_id_value:
+                        # Fallback for very old rows, if any, that do not contain task_id.
+                        task_id_value = f"legacy::{r.get('task_date','')}::{r.get('task_title','')}"
+                    task_map.setdefault(task_id_value, r)
 
-                st.write(f"Submissions: **{len(filtered)}**")
+                task_ids = sorted(
+                    task_map.keys(),
+                    key=lambda tid: (
+                        str(task_map[tid].get("task_date", "")),
+                        str(task_map[tid].get("submitted_at", "")),
+                    ),
+                    reverse=True,
+                )
 
-                table_rows = [{
-                    "Class": r.get("class_name", ""),
-                    "Task Date": r.get("task_date", ""),
-                    "Task Title": r.get("task_title", ""),
-                    "Seat No.": r.get("seat_number", ""),
-                    "Student ID": r.get("student_id", ""),
-                    "Student Name": r.get("student_name", ""),
-                    "Content": r.get("content_score", ""),
-                    "Organization": r.get("organization_score", ""),
-                    "Language": r.get("language_score", ""),
-                    "Genre": r.get("genre_score", ""),
-                    "Total": r.get("total", ""),
-                    "Submitted": r.get("submitted_at", "")
-                } for r in filtered]
+                selected_task_id = st.selectbox(
+                    "Task",
+                    task_ids,
+                    format_func=lambda tid: f"{task_map[tid].get('task_date','')} · {task_map[tid].get('task_title','')}",
+                    key="results_task",
+                )
 
-                st.dataframe(table_rows, use_container_width=True, hide_index=True)
+                if selected_task_id.startswith("legacy::"):
+                    task_date_value = str(task_map[selected_task_id].get("task_date", ""))
+                    task_title_value = str(task_map[selected_task_id].get("task_title", ""))
+                    task_rows = [
+                        r for r in class_rows
+                        if str(r.get("task_date", "")) == task_date_value
+                        and str(r.get("task_title", "")) == task_title_value
+                    ]
+                else:
+                    task_rows = [r for r in class_rows if str(r.get("task_id", "")) == selected_task_id]
 
-                if filtered:
-                    st.markdown("### View Submission")
-                    view_options = {
-                        f"{r.get('seat_number','')} | {r.get('student_id','')} | {r.get('student_name','')}": r
-                        for r in filtered
-                    }
-                    selected_label = st.selectbox(
-                        "Choose a student",
-                        ["Select a student"] + list(view_options.keys()),
-                        key="view_submission_student",
+                def seat_sort_key(row):
+                    raw = str(row.get("seat_number", "")).strip()
+                    try:
+                        return (0, int(raw), str(row.get("student_name", "")))
+                    except Exception:
+                        return (1, 999999, raw, str(row.get("student_name", "")))
+
+                task_rows = sorted(task_rows, key=seat_sort_key)
+
+                # 3) Student: submission ID is the actual selectbox value.
+                submission_map = {str(r.get("id")): r for r in task_rows if r.get("id") is not None}
+                submission_ids = list(submission_map.keys())
+
+                if not submission_ids:
+                    st.info("No student submissions are available for this task.")
+                else:
+                    selected_submission_id = st.selectbox(
+                        "Student",
+                        submission_ids,
+                        format_func=lambda sid: (
+                            f"{submission_map[sid].get('seat_number','')} · "
+                            f"{submission_map[sid].get('student_id','')} · "
+                            f"{submission_map[sid].get('student_name','')}"
+                        ),
+                        key="results_student",
                     )
-                    if selected_label != "Select a student":
-                        selected = view_options[selected_label]
-                        with st.container(border=True):
-                            st.markdown(f"**Student:** {selected.get('student_name','')}  ")
-                            st.markdown(f"**Seat No.:** {selected.get('seat_number','')}  ")
-                            st.markdown(f"**Student ID:** {selected.get('student_id','')}  ")
-                            st.markdown(f"**Task:** {selected.get('task_title','')}  ")
-                            st.markdown(f"**Total:** {selected.get('total','')} / 16")
 
-                            image_bytes = download_submission_image(selected.get("image_path", ""))
-                            if image_bytes:
-                                st.markdown("#### Original Submission")
-                                st.image(image_bytes, use_container_width=True)
-                            else:
-                                st.info("No stored image is available for this submission. Older submissions created before image storage was enabled will not have an image.")
+                    selected = submission_map[selected_submission_id]
 
-                            transcription = selected.get("transcription", "")
-                            if transcription:
-                                st.markdown("#### AI Transcription")
-                                st.text_area(
-                                    "Transcribed text",
-                                    value=transcription,
-                                    height=220,
-                                    disabled=True,
-                                    key=f"transcription_{selected.get('id','')}",
-                                )
+                    st.divider()
+                    st.markdown("### Student Information")
+                    st.markdown(
+                        f"**Seat No.:** {selected.get('seat_number','')} · "
+                        f"**Student ID:** {selected.get('student_id','')} · "
+                        f"**Name:** {selected.get('student_name','')}"
+                    )
+                    st.markdown(
+                        f"**Class:** {selected.get('class_name','')} · "
+                        f"**Task Date:** {selected.get('task_date','')} · "
+                        f"**Task Title:** {selected.get('task_title','')}"
+                    )
+                    st.caption(f"Submitted: {selected.get('submitted_at','')}")
+
+                    st.markdown("### Assessment Results")
+                    score_cols = st.columns(5)
+                    score_items = [
+                        ("Content", selected.get("content_score", ""), 4),
+                        ("Organization", selected.get("organization_score", ""), 4),
+                        ("Language", selected.get("language_score", ""), 4),
+                        ("Genre", selected.get("genre_score", ""), 4),
+                        ("Total", selected.get("total", ""), 16),
+                    ]
+                    for col, (label, value, maximum) in zip(score_cols, score_items):
+                        with col:
+                            st.caption(label)
+                            st.markdown(f"## {value}/{maximum}")
+
+                    st.divider()
+                    st.markdown("### Original Submission & Double Check")
+                    image_path = selected.get("image_path", "")
+                    image_bytes = download_submission_image(image_path)
+                    if image_bytes:
+                        st.markdown("#### Original Submission")
+                        st.image(image_bytes, use_container_width=True)
+                    else:
+                        st.info("No stored image is available for this submission. Older submissions created before image storage was enabled will not have an image.")
+
+                    transcription = selected.get("transcription", "")
+                    if transcription:
+                        st.markdown("#### AI Transcription")
+                        st.text_area(
+                            "Transcribed text",
+                            value=transcription,
+                            height=240,
+                            disabled=True,
+                            key=f"transcription_{selected_submission_id}",
+                        )
+                    else:
+                        st.info("No AI transcription is stored for this submission.")
+
+                    st.caption(
+                        "Revision Suggestions and detailed AI feedback are not currently stored in the submissions table, so they cannot be reopened here for older or completed submissions."
+                    )
+
+                    st.divider()
+                    st.markdown("### Task Results")
+                    table_rows = [{
+                        "Seat No.": r.get("seat_number", ""),
+                        "Student ID": r.get("student_id", ""),
+                        "Student Name": r.get("student_name", ""),
+                        "Content": r.get("content_score", ""),
+                        "Organization": r.get("organization_score", ""),
+                        "Language": r.get("language_score", ""),
+                        "Genre": r.get("genre_score", ""),
+                        "Total": r.get("total", ""),
+                        "Submitted": r.get("submitted_at", ""),
+                    } for r in task_rows]
+                    st.dataframe(table_rows, use_container_width=True, hide_index=True)
 
                     st.download_button(
-                        "Download Results (Excel)",
-                        data=build_excel(filtered),
+                        "Download This Task Results (Excel)",
+                        data=build_excel(task_rows),
                         file_name="writing_results.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
+                        use_container_width=True,
                     )
