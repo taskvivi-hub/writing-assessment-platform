@@ -4,7 +4,6 @@ import base64
 import html
 import hashlib
 import time
-import re
 from datetime import date
 from io import BytesIO
 
@@ -568,8 +567,8 @@ IMPORTANT TASK RULES
 - If the Genre / Writing Type is "Email Body", evaluate only the body paragraphs for appropriate purpose, organization, tone, audience awareness, and professional/academic appropriacy. Do not require a greeting, closing, or signature.
 - If the image is not readable enough, do not guess.
 
-LANGUAGE CORRECTIONS — SENTENCE BY SENTENCE
-Check the student's transcription sentence by sentence for ALL clear, genuine errors in these categories:
+LANGUAGE CORRECTIONS
+Identify ALL clear, genuine errors in these categories:
 - Grammar
 - Spelling
 - Punctuation
@@ -578,18 +577,16 @@ Check the student's transcription sentence by sentence for ALL clear, genuine er
 
 Use Sentence Structure for problems such as sentence fragments, run-on sentences, comma splices, incorrect word order, incomplete or malformed clauses, or sentence patterns that make the intended meaning unclear. Do not use Sentence Structure for mere style preferences.
 
-IMPORTANT OUTPUT RULES:
-- Create ONE correction item for each sentence that contains one or more genuine errors.
-- Do NOT create separate correction items for multiple errors in the same sentence.
-- "original_sentence" must quote the student's complete original sentence exactly as it appears in the transcription.
-- "corrected_sentence" must give one complete corrected version of that same sentence while preserving the student's intended meaning.
-- "explanation_zh" must explain ALL errors in that sentence in concise Traditional Chinese.
-- Separate each error explanation with a Chinese semicolon "；".
-- Begin each explanation item with its category, for example: "Grammar：..."；"Sentence Structure：...".
-- If the sentence has only one error, give only one explanation item.
-- Do not rewrite sentences that are already acceptable.
-- Do not invent wording that does not appear in the student's transcription.
-- Do not rewrite the full composition.
+Do not impose an artificial maximum number of corrections. If there are many genuine errors, list all of them.
+For every error:
+- identify the category,
+- quote the student's original wording,
+- give the corrected wording,
+- give one short Traditional Chinese explanation.
+Do not rewrite the full composition.
+Preserve the student's intended meaning.
+Do not list style preferences as errors.
+Do not invent errors when the original wording is acceptable.
 
 CONTENT & ORGANIZATION REVISION
 Provide 1 to 3 useful revision suggestions about CONTENT and ORGANIZATION only.
@@ -613,9 +610,10 @@ The values "<score 0-4>" below are placeholders. Use 0 only when the language-of
   }},
   "corrections": [
     {{
-      "original_sentence": "complete original sentence exactly from the transcription",
-      "corrected_sentence": "complete corrected sentence",
-      "explanation_zh": "Grammar：...；Spelling：...；Punctuation：...；Capitalization：...；Sentence Structure：..."
+      "type": "Grammar | Spelling | Punctuation | Capitalization | Sentence Structure",
+      "original": "student text",
+      "correction": "corrected text",
+      "explanation_zh": "簡短的繁體中文說明"
     }}
   ],
   "content_organization_suggestions": [
@@ -702,33 +700,6 @@ def assess(uploaded_file, task):
             if score not in (1, 2, 3, 4):
                 raise ValueError(f"Invalid score for {dim}")
             result["scores"][dim] = score
-
-        # Verify every original sentence against the transcription.
-        # Any correction for wording the student did not write is discarded.
-        def _norm_match(s):
-            return re.sub(r"[^a-z0-9]+", " ", str(s).lower()).strip()
-
-        transcription_norm = _norm_match(transcription)
-        verified = []
-        seen = set()
-        for item in result.get("corrections", []) or []:
-            if not isinstance(item, dict):
-                continue
-            original = str(item.get("original_sentence", item.get("original", ""))).strip()
-            corrected = str(item.get("corrected_sentence", item.get("correction", ""))).strip()
-            explanation = str(item.get("explanation_zh", item.get("explanation", ""))).strip()
-            original_norm = _norm_match(original)
-            if not original_norm or original_norm not in transcription_norm:
-                continue
-            if original_norm in seen:
-                continue
-            seen.add(original_norm)
-            verified.append({
-                "original_sentence": original,
-                "corrected_sentence": corrected,
-                "explanation_zh": explanation,
-            })
-        result["corrections"] = verified
     return result
 
 
@@ -1024,27 +995,6 @@ input::placeholder, textarea::placeholder{
   color:#1d3d5c !important;
   -webkit-text-fill-color:#1d3d5c !important;
 }
-/* Uploaded file chip/icon: make the file icon light instead of the default dark tile */
-[data-testid="stFileUploaderFile"]{
-  background:#f7fbff !important;
-  border:1px solid #cfe0f1 !important;
-  border-radius:12px !important;
-}
-[data-testid="stFileUploaderFile"] svg{
-  color:#ffffff !important;
-  fill:#ffffff !important;
-  stroke:#ffffff !important;
-}
-[data-testid="stFileUploaderFile"] > div:first-child,
-[data-testid="stFileUploaderFile"] [data-testid="stFileUploaderFileIcon"]{
-  background:#6f9fd0 !important;
-  color:#ffffff !important;
-  border-radius:9px !important;
-}
-[data-testid="stFileUploaderFile"] > div:first-child *{
-  color:#ffffff !important;
-  -webkit-text-fill-color:#ffffff !important;
-}
 /* Custom cards */
 .taskbox,.card,.totalbox,.scorechart{
   background:#ffffff !important;
@@ -1085,97 +1035,6 @@ button[data-baseweb="tab"],button[data-baseweb="tab"] *{color:#17324d !important
     color:#17324d !important;
   }
 }
-
-/* Strong fallback for Streamlit's current uploaded-file icon markup.
-   The internal DOM can vary by Streamlit version, so target icon-bearing
-   elements anywhere inside the file uploader instead of relying on one testid. */
-[data-testid="stFileUploader"] [data-testid^="stIconMaterial"],
-[data-testid="stFileUploader"] svg{
-  color:#4f8cff !important;
-  fill:#4f8cff !important;
-  stroke:#4f8cff !important;
-}
-[data-testid="stFileUploader"] div:has(> svg),
-[data-testid="stFileUploader"] div:has(> [data-testid^="stIconMaterial"]),
-[data-testid="stFileUploader"] span:has(> svg){
-  background:#eef6ff !important;
-  color:#4f8cff !important;
-  border-radius:8px !important;
-}
-[data-testid="stFileUploader"] [data-testid^="stIconMaterial"]{
-  background:#eef6ff !important;
-  border-radius:8px !important;
-  padding:2px !important;
-}
-
-
-/* Hide Streamlit's built-in uploaded-file icon. Its dark tile is rendered
-   inconsistently across Streamlit/browser versions, so we use our own
-   upload-complete confirmation below the uploader instead. */
-[data-testid="stFileUploader"] svg,
-[data-testid="stFileUploader"] [data-testid^="stIconMaterial"]{
-  display:none !important;
-}
-
-
-/* Replace Streamlit's blank/dark uploaded-file tile with a real document icon. */
-[data-testid="stFileUploaderFile"] > div:first-child{
-  display:none !important;
-}
-[data-testid="stFileUploaderFile"]::before{
-  content:"📄";
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:32px;
-  height:32px;
-  margin-right:8px;
-  border-radius:8px;
-  background:#eef6ff;
-  font-size:20px;
-  line-height:1;
-  flex:0 0 auto;
-}
-
-
-/* Custom uploaded-file card used after upload is complete. */
-.wa-upload-card{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  background:#f7fbff;
-  border:1px solid #cfe0f1;
-  border-radius:14px;
-  padding:12px 14px;
-  margin:.45rem 0 .55rem;
-}
-.wa-upload-doc{
-  width:38px;
-  height:38px;
-  flex:0 0 38px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:10px;
-  background:#eaf3ff;
-}
-.wa-upload-doc svg{
-  width:22px;
-  height:22px;
-  display:block;
-}
-.wa-upload-name{
-  font-weight:800;
-  color:#17324d;
-  line-height:1.35;
-  word-break:break-all;
-}
-.wa-upload-size{
-  color:#5f7183;
-  font-size:.9rem;
-  margin-top:2px;
-}
-
 </style>
 ''', unsafe_allow_html=True)
 
@@ -1234,64 +1093,11 @@ if task_id:
             student_name = st.text_input("👤 Student Name")
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📷</span><span>Step 2. Upload your writing</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="wa-instruction">Take a clear photo of your writing and upload it here. Wait until you see <b>Upload complete</b> before pressing Submit.</div>', unsafe_allow_html=True)
-
-        if "upload_widget_version" not in st.session_state:
-            st.session_state["upload_widget_version"] = 0
-
-        uploaded = st.file_uploader(
-            "Choose an image",
-            type=["jpg", "jpeg", "png", "webp"],
-            key=f"writing_upload_{st.session_state['upload_widget_version']}",
-        )
-
-        if uploaded is None:
-            st.info("Choose your photo and wait until the upload is complete.")
-        else:
-            # Hide Streamlit's native uploaded-file row completely after upload.
-            # This avoids the browser/Streamlit-specific blank or dark square icon.
-            st.markdown(
-                """<style>
-                [data-testid="stFileUploader"]{display:none !important;}
-                </style>""",
-                unsafe_allow_html=True,
-            )
-            size_mb = len(uploaded.getvalue()) / (1024 * 1024)
-            safe_name = html.escape(uploaded.name)
-            st.markdown(
-                f"""
-                <div class="wa-upload-card">
-                  <div class="wa-upload-doc" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 2.75h6.7L19.25 8.3V21.25H7V2.75Z"
-                            fill="#4F8CFF" opacity=".18"/>
-                      <path d="M13.5 2.75V8.5H19.25"
-                            stroke="#246BFD" stroke-width="1.8"
-                            stroke-linejoin="round"/>
-                      <path d="M7 2.75h6.5L19.25 8.5V21.25H7V2.75Z"
-                            stroke="#246BFD" stroke-width="1.8"
-                            stroke-linejoin="round"/>
-                      <path d="M9.5 12.25H16.5M9.5 15.5H16.5M9.5 18.75H14.5"
-                            stroke="#246BFD" stroke-width="1.6"
-                            stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <div class="wa-upload-name">{safe_name}</div>
-                    <div class="wa-upload-size">{size_mb:.2f} MB · Upload complete</div>
-                  </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if st.button("Choose a different photo", use_container_width=False):
-                st.session_state["upload_widget_version"] += 1
-                st.rerun()
+        st.markdown('<div class="wa-instruction">Take a clear photo of your writing and upload it here. Each student can upload only once.</div>', unsafe_allow_html=True)
+        uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">✅</span><span>Step 3. Submit your writing</span></div>', unsafe_allow_html=True)
-        if uploaded is None:
-            st.caption("Submit will be available after the photo upload is complete.")
-        if st.button("Submit for Assessment", type="primary", use_container_width=True, disabled=(uploaded is None)):
+        if st.button("Submit for Assessment", type="primary", use_container_width=True):
             if not seat_number.strip() or not student_id.strip() or not student_name.strip():
                 st.warning("Please enter your Seat No., Student ID, and Student Name.")
             elif not (seat_number.strip().isascii() and seat_number.strip().isdigit() and 1 <= len(seat_number.strip()) <= 2):
@@ -1381,12 +1187,13 @@ if task_id:
                     st.success("No clear grammar, spelling, punctuation, capitalization, or sentence structure errors were found.")
                 else:
                     for i, c in enumerate(corrections, 1):
-                        original = c.get("original_sentence", c.get("original", ""))
-                        correction = c.get("corrected_sentence", c.get("correction", ""))
+                        error_type = c.get("type", "Correction")
+                        original = c.get("original", "")
+                        correction = c.get("correction", "")
                         explanation_zh = c.get("explanation_zh", c.get("explanation", ""))
-                        st.markdown(f"**Sentence {i}**")
+                        st.markdown(f"**{i}. {error_type}**")
                         st.markdown(f"- **Original:** {original}")
-                        st.markdown(f"- **Corrected:** {correction}")
+                        st.markdown(f"- **Correction:** {correction}")
                         if explanation_zh:
                             st.markdown(f"- **說明：** {explanation_zh}")
                         st.write("")
