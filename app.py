@@ -494,13 +494,42 @@ SCORING CALIBRATION
 - Score each dimension by matching the student's task-specific performance to the closest official descriptor.
 - Do NOT deliberately score generously or harshly.
 - A score of 1 is appropriate when the student fails to perform that dimension adequately for the assigned task.
-- A score of 2 is appropriate for partial, limited, inconsistent, or weak task performance.
-- A score of 3 represents solid, generally successful performance: the main task is completed, development and control are adequate, but the writing may still be simple, uneven, limited, or contain noticeable weaknesses.
+- A score of 2 is appropriate for partial, limited, inconsistent, weak, or noticeably flawed performance.
+- A score of 3 is NOT simply "the task was completed" or "the meaning can be understood." A 3 requires clearly adequate, generally successful performance in THAT specific dimension.
 - A score of 4 is NOT the default for a complete response. It represents clearly stronger performance than score 3 and requires the score-4 descriptor to be fully and consistently demonstrated.
-- Completing every listed requirement does NOT automatically justify score 4.
-- If a response is mainly simple listing, thin explanation, basic development, predictable structure, limited language range, or has repeated noticeable errors, the relevant dimension should normally remain at 3 or below.
+- Completing every listed requirement does NOT automatically justify score 3 or 4 in Organization, Language Use, or Genre.
+- If a response is mainly simple listing, thin explanation, basic development, predictable structure, limited language range, or has repeated noticeable errors, the relevant dimension should normally remain at 2 or 3 depending on the descriptor match.
+- Do not raise Organization or Genre to 3 merely because the response is on topic, has a beginning and ending, or includes a few expected surface features.
+- Do not raise Language Use to 3 merely because the overall meaning is understandable.
+- When deciding between 2 and 3, choose 3 only when the evidence shows adequate control of that specific dimension across most of the response. If performance is frequent, repeated, or noticeably weak in that dimension, choose 2.
 - When deciding between 3 and 4, choose 4 only when there is clear positive evidence of fuller development, stronger control, effective organization, and/or broader, more precise task-appropriate language as required by that dimension.
 - Do not automatically give the same score to all four dimensions. Judge each dimension separately, but always within the same task context.
+
+ANTI-INFLATION CHECK: CHECK BEFORE ANY SCORE OF 3
+Before assigning 3 in any dimension, ask whether the response demonstrates ADEQUATE CONTROL of that dimension, not merely partial success.
+
+For Content = 3:
+- The main task requirements are addressed clearly enough to fulfill the task.
+- Ideas may still be simple or only moderately developed.
+- A response can earn Content = 3 even when its Organization, Language Use, or Genre scores are only 2.
+
+For Organization = 3:
+- Ideas must be arranged in a generally clear and coherent sequence across the response.
+- Basic connectors alone (for example, "First" or "Also") do not justify 3 if ideas are mostly listed, loosely connected, or weakly developed.
+- If coherence is basic, inconsistent, or frequently awkward, Organization should normally be 2.
+
+For Language Use = 3:
+- Grammar, vocabulary, spelling, punctuation, capitalization, and sentence structure must be adequately controlled across most of the response.
+- Some errors are acceptable, but errors should not be frequent across many sentences.
+- Repeated basic errors such as subject-verb agreement, missing articles/prepositions, malformed clauses, fragments, run-ons, incorrect word forms, or unnatural sentence patterns normally keep Language Use at 2 or below, even when the meaning remains understandable.
+
+For Genre & Professional Appropriacy = 3:
+- The response must generally sustain the expected communicative purpose, tone, audience awareness, organization, and conventions of the assigned genre.
+- A greeting, closing, title, or other surface feature alone does not justify 3.
+- If tone, phrasing, format, audience awareness, or genre conventions are noticeably inconsistent or weak, Genre should normally be 2.
+
+CALIBRATION PRINCIPLE
+A poor but on-task response may reasonably receive a pattern such as Content = 3 while Organization = 2, Language Use = 2, and Genre = 2. Do not let successful task completion inflate the other dimensions.
 
 HIGH-SCORE GATE: CHECK BEFORE ANY SCORE OF 4
 Before assigning 4 in any dimension, ask whether the response is clearly stronger than an adequate score-3 response for THIS task. If the answer is uncertain, assign 3 rather than 4.
