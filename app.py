@@ -1641,7 +1641,6 @@ if task_id:
                                 image_path = upload_submission_image(task["id"], student_id, student_name, uploaded)
                                 save_submission(task, seat_number, student_id, student_name, result, image_path)
                                 st.session_state["result"] = result
-                                st.session_state["show_revision"] = False
                 except Exception as e:
                     st.error(f"Assessment could not be completed: {e}")
                     st.info("Your submission was not completed. You may try again. If this message appears again, please show it to your teacher.")
@@ -1679,10 +1678,7 @@ if task_id:
 
             if not result.get("english_response", True):
                 st.info("This response was not written predominantly in English. Please complete the assigned task in English.")
-            elif st.button("See Revision Suggestions", use_container_width=True):
-                st.session_state["show_revision"] = True
-
-            if result.get("english_response", True) and st.session_state.get("show_revision"):
+            else:
                 st.divider()
                 st.markdown('<div class="wa-section-title"><span class="wa-section-icon">💡</span><span>Revision Suggestions</span></div>', unsafe_allow_html=True)
 
