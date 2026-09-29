@@ -4,6 +4,7 @@ import base64
 import html
 import hashlib
 import time
+import re
 from datetime import date
 from io import BytesIO
 
@@ -567,8 +568,8 @@ IMPORTANT TASK RULES
 - If the Genre / Writing Type is "Email Body", evaluate only the body paragraphs for appropriate purpose, organization, tone, audience awareness, and professional/academic appropriacy. Do not require a greeting, closing, or signature.
 - If the image is not readable enough, do not guess.
 
-LANGUAGE CORRECTIONS
-Identify ALL clear, genuine errors in these categories:
+LANGUAGE CORRECTIONS — SENTENCE BY SENTENCE
+Check the student's transcription sentence by sentence for ALL clear, genuine errors in these categories:
 - Grammar
 - Spelling
 - Punctuation
@@ -577,16 +578,18 @@ Identify ALL clear, genuine errors in these categories:
 
 Use Sentence Structure for problems such as sentence fragments, run-on sentences, comma splices, incorrect word order, incomplete or malformed clauses, or sentence patterns that make the intended meaning unclear. Do not use Sentence Structure for mere style preferences.
 
-Do not impose an artificial maximum number of corrections. If there are many genuine errors, list all of them.
-For every error:
-- identify the category,
-- quote the student's original wording,
-- give the corrected wording,
-- give one short Traditional Chinese explanation.
-Do not rewrite the full composition.
-Preserve the student's intended meaning.
-Do not list style preferences as errors.
-Do not invent errors when the original wording is acceptable.
+IMPORTANT OUTPUT RULES:
+- Create ONE correction item for each sentence that contains one or more genuine errors.
+- Do NOT create separate correction items for multiple errors in the same sentence.
+- "original_sentence" must quote the student's complete original sentence exactly as it appears in the transcription.
+- "corrected_sentence" must give one complete corrected version of that same sentence while preserving the student's intended meaning.
+- "explanation_zh" must explain ALL errors in that sentence in concise Traditional Chinese.
+- Separate each error explanation with a Chinese semicolon "；".
+- Begin each explanation item with its category, for example: "Grammar：..."；"Sentence Structure：...".
+- If the sentence has only one error, give only one explanation item.
+- Do not rewrite sentences that are already acceptable.
+- Do not invent wording that does not appear in the student's transcription.
+- Do not rewrite the full composition.
 
 CONTENT & ORGANIZATION REVISION
 Provide 1 to 3 useful revision suggestions about CONTENT and ORGANIZATION only.
@@ -610,10 +613,9 @@ The values "<score 0-4>" below are placeholders. Use 0 only when the language-of
   }},
   "corrections": [
     {{
-      "type": "Grammar | Spelling | Punctuation | Capitalization | Sentence Structure",
-      "original": "student text",
-      "correction": "corrected text",
-      "explanation_zh": "簡短的繁體中文說明"
+      "original_sentence": "complete original sentence exactly from the transcription",
+      "corrected_sentence": "complete corrected sentence",
+      "explanation_zh": "Grammar：...；Spelling：...；Punctuation：...；Capitalization：...；Sentence Structure：..."
     }}
   ],
   "content_organization_suggestions": [
@@ -700,6 +702,33 @@ def assess(uploaded_file, task):
             if score not in (1, 2, 3, 4):
                 raise ValueError(f"Invalid score for {dim}")
             result["scores"][dim] = score
+
+        # Verify every original sentence against the transcription.
+        # Any correction for wording the student did not write is discarded.
+        def _norm_match(s):
+            return re.sub(r"[^a-z0-9]+", " ", str(s).lower()).strip()
+
+        transcription_norm = _norm_match(transcription)
+        verified = []
+        seen = set()
+        for item in result.get("corrections", []) or []:
+            if not isinstance(item, dict):
+                continue
+            original = str(item.get("original_sentence", item.get("original", ""))).strip()
+            corrected = str(item.get("corrected_sentence", item.get("correction", ""))).strip()
+            explanation = str(item.get("explanation_zh", item.get("explanation", ""))).strip()
+            original_norm = _norm_match(original)
+            if not original_norm or original_norm not in transcription_norm:
+                continue
+            if original_norm in seen:
+                continue
+            seen.add(original_norm)
+            verified.append({
+                "original_sentence": original,
+                "corrected_sentence": corrected,
+                "explanation_zh": explanation,
+            })
+        result["corrections"] = verified
     return result
 
 
@@ -995,6 +1024,27 @@ input::placeholder, textarea::placeholder{
   color:#1d3d5c !important;
   -webkit-text-fill-color:#1d3d5c !important;
 }
+/* Uploaded file chip/icon: make the file icon light instead of the default dark tile */
+[data-testid="stFileUploaderFile"]{
+  background:#f7fbff !important;
+  border:1px solid #cfe0f1 !important;
+  border-radius:12px !important;
+}
+[data-testid="stFileUploaderFile"] svg{
+  color:#ffffff !important;
+  fill:#ffffff !important;
+  stroke:#ffffff !important;
+}
+[data-testid="stFileUploaderFile"] > div:first-child,
+[data-testid="stFileUploaderFile"] [data-testid="stFileUploaderFileIcon"]{
+  background:#6f9fd0 !important;
+  color:#ffffff !important;
+  border-radius:9px !important;
+}
+[data-testid="stFileUploaderFile"] > div:first-child *{
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+}
 /* Custom cards */
 .taskbox,.card,.totalbox,.scorechart{
   background:#ffffff !important;
@@ -1035,6 +1085,97 @@ button[data-baseweb="tab"],button[data-baseweb="tab"] *{color:#17324d !important
     color:#17324d !important;
   }
 }
+
+/* Strong fallback for Streamlit's current uploaded-file icon markup.
+   The internal DOM can vary by Streamlit version, so target icon-bearing
+   elements anywhere inside the file uploader instead of relying on one testid. */
+[data-testid="stFileUploader"] [data-testid^="stIconMaterial"],
+[data-testid="stFileUploader"] svg{
+  color:#4f8cff !important;
+  fill:#4f8cff !important;
+  stroke:#4f8cff !important;
+}
+[data-testid="stFileUploader"] div:has(> svg),
+[data-testid="stFileUploader"] div:has(> [data-testid^="stIconMaterial"]),
+[data-testid="stFileUploader"] span:has(> svg){
+  background:#eef6ff !important;
+  color:#4f8cff !important;
+  border-radius:8px !important;
+}
+[data-testid="stFileUploader"] [data-testid^="stIconMaterial"]{
+  background:#eef6ff !important;
+  border-radius:8px !important;
+  padding:2px !important;
+}
+
+
+/* Hide Streamlit's built-in uploaded-file icon. Its dark tile is rendered
+   inconsistently across Streamlit/browser versions, so we use our own
+   upload-complete confirmation below the uploader instead. */
+[data-testid="stFileUploader"] svg,
+[data-testid="stFileUploader"] [data-testid^="stIconMaterial"]{
+  display:none !important;
+}
+
+
+/* Replace Streamlit's blank/dark uploaded-file tile with a real document icon. */
+[data-testid="stFileUploaderFile"] > div:first-child{
+  display:none !important;
+}
+[data-testid="stFileUploaderFile"]::before{
+  content:"📄";
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  margin-right:8px;
+  border-radius:8px;
+  background:#eef6ff;
+  font-size:20px;
+  line-height:1;
+  flex:0 0 auto;
+}
+
+
+/* Custom uploaded-file card used after upload is complete. */
+.wa-upload-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#f7fbff;
+  border:1px solid #cfe0f1;
+  border-radius:14px;
+  padding:12px 14px;
+  margin:.45rem 0 .55rem;
+}
+.wa-upload-doc{
+  width:38px;
+  height:38px;
+  flex:0 0 38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  background:#eaf3ff;
+}
+.wa-upload-doc svg{
+  width:22px;
+  height:22px;
+  display:block;
+}
+.wa-upload-name{
+  font-weight:800;
+  color:#17324d;
+  line-height:1.35;
+  word-break:break-all;
+}
+.wa-upload-size{
+  color:#5f7183;
+  font-size:.9rem;
+  margin-top:2px;
+}
+
 </style>
 ''', unsafe_allow_html=True)
 
@@ -1045,6 +1186,320 @@ task_id = st.query_params.get("task")
 # STUDENT VIEW
 # ---------------------------
 if task_id:
+
+    st.markdown(
+        """
+        <style>
+        :root{
+          --wa-student-ink:#10233f;
+          --wa-student-muted:#5e6f8b;
+          --wa-student-line:#d8e0f1;
+          --wa-student-glass:rgba(255,255,255,.88);
+          --wa-student-shadow:0 12px 30px rgba(58,75,120,.10);
+          --wa-student-shadow-raised:
+              0 7px 14px rgba(64,75,110,.12),
+              inset 0 1px 0 rgba(255,255,255,.95);
+        }
+
+        html, body, .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stMain"]{
+          color-scheme:light !important;
+          background:
+            radial-gradient(circle at 92% 5%, rgba(193,168,255,.24) 0, rgba(193,168,255,0) 26%),
+            radial-gradient(circle at 8% 82%, rgba(143,229,215,.20) 0, rgba(143,229,215,0) 28%),
+            linear-gradient(180deg,#edf2ff 0%,#f5f8ff 47%,#eefbf8 100%) !important;
+          color:var(--wa-student-ink) !important;
+        }
+
+        .block-container{
+          max-width:940px !important;
+          padding-top:1.35rem !important;
+          padding-bottom:5rem !important;
+        }
+
+        .wa-hero{
+          padding:.15rem 0 1.15rem !important;
+          text-align:center !important;
+        }
+        .wa-hero-icon{
+          width:72px !important;
+          height:72px !important;
+          margin:0 auto .7rem !important;
+          border-radius:20px !important;
+          background:linear-gradient(145deg,#8a68ff 0%,#6840ee 100%) !important;
+          border:1px solid rgba(255,255,255,.72) !important;
+          box-shadow:
+            0 12px 24px rgba(104,64,238,.23),
+            inset 0 1px 0 rgba(255,255,255,.35) !important;
+          color:#fff !important;
+          font-size:2rem !important;
+          display:flex !important;
+          align-items:center !important;
+          justify-content:center !important;
+        }
+        .wa-hero-icon svg{width:36px !important;height:36px !important;display:block !important;}
+        .wa-hero-title{
+          font-size:2.15rem !important;
+          font-weight:850 !important;
+          letter-spacing:-.025em !important;
+          color:var(--wa-student-ink) !important;
+          line-height:1.15 !important;
+        }
+        .wa-hero-subtitle{
+          max-width:720px;
+          margin:.48rem auto 0 !important;
+          color:var(--wa-student-muted) !important;
+          font-size:1.05rem !important;
+          font-weight:500 !important;
+          line-height:1.6 !important;
+        }
+
+        .taskbox,
+        .wa-requirements-card,
+        .card,
+        .totalbox,
+        .scorechart,
+        .wa-upload-card{
+          background:var(--wa-student-glass) !important;
+          border:1px solid rgba(255,255,255,.92) !important;
+          border-radius:24px !important;
+          box-shadow:var(--wa-student-shadow) !important;
+          backdrop-filter:blur(10px);
+          -webkit-backdrop-filter:blur(10px);
+        }
+
+        .taskbox{
+          padding:1.35rem 1.55rem !important;
+          margin:.85rem 0 1.45rem !important;
+          border-left:none !important;
+          line-height:1.9 !important;
+          color:var(--wa-student-ink) !important;
+        }
+        .taskbox b{color:#24354f !important;font-weight:800 !important;}
+
+        .wa-requirements-card{
+          padding:1.25rem 1.4rem !important;
+          margin:.35rem 0 1.5rem !important;
+        }
+        .wa-requirements{
+          margin:0 !important;
+          color:#4b5f7c !important;
+          font-size:1.05rem !important;
+          line-height:1.85 !important;
+          font-weight:500 !important;
+        }
+
+        .wa-section-title{
+          margin:1.55rem 0 .65rem !important;
+          color:var(--wa-student-ink) !important;
+          font-size:1.28rem !important;
+          font-weight:850 !important;
+          gap:.65rem !important;
+        }
+        .wa-section-icon{
+          width:36px !important;
+          height:36px !important;
+          border-radius:11px !important;
+          background:linear-gradient(145deg,#f6f3ff,#eeeaff) !important;
+          border:1px solid #e2dcff !important;
+          box-shadow:0 4px 10px rgba(86,64,180,.07) !important;
+          color:#6045d9 !important;
+        }
+        .wa-instruction{
+          color:#718099 !important;
+          font-size:1rem !important;
+          font-weight:500 !important;
+          line-height:1.65 !important;
+          margin:.15rem 0 .75rem !important;
+        }
+
+        .stTextInput label,
+        .stTextArea label,
+        .stSelectbox label,
+        .stFileUploader label,
+        [data-testid="stWidgetLabel"] *{
+          color:#263a56 !important;
+          -webkit-text-fill-color:#263a56 !important;
+          font-weight:750 !important;
+          opacity:1 !important;
+        }
+
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div,
+        div[data-baseweb="select"] > div,
+        [data-baseweb="base-input"]{
+          background:rgba(255,255,255,.84) !important;
+          border:1px solid #d7deec !important;
+          border-radius:12px !important;
+          box-shadow:
+            inset 0 1px 2px rgba(48,63,94,.05),
+            0 2px 6px rgba(54,72,110,.03) !important;
+        }
+        div[data-baseweb="input"] input,
+        div[data-baseweb="textarea"] textarea,
+        div[data-baseweb="select"] input,
+        input, textarea{
+          color:#223550 !important;
+          -webkit-text-fill-color:#223550 !important;
+          background:transparent !important;
+          font-weight:600 !important;
+        }
+        input::placeholder, textarea::placeholder{
+          color:#99a7bd !important;
+          -webkit-text-fill-color:#99a7bd !important;
+          opacity:1 !important;
+        }
+
+        [data-testid="stFileUploaderDropzone"]{
+          background:rgba(255,255,255,.74) !important;
+          border:1.5px dashed #b9c7df !important;
+          border-radius:18px !important;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.8) !important;
+        }
+        [data-testid="stFileUploaderDropzone"] *{
+          color:#425571 !important;
+          -webkit-text-fill-color:#425571 !important;
+        }
+
+        .wa-upload-card{
+          padding:12px 14px !important;
+          border-radius:16px !important;
+          margin:.5rem 0 .65rem !important;
+        }
+        .wa-upload-doc{
+          background:linear-gradient(145deg,#f0ecff,#e8f4ff) !important;
+          border:1px solid #ddd9fa !important;
+          box-shadow:0 4px 10px rgba(83,67,165,.08) !important;
+        }
+        .wa-upload-name{color:#243651 !important;font-weight:800 !important;}
+        .wa-upload-size{color:#73839a !important;}
+
+        .stButton > button,
+        .stDownloadButton > button{
+          min-height:3.05rem !important;
+          border-radius:13px !important;
+          background:linear-gradient(180deg,#ffffff 0%,#f3f5fb 100%) !important;
+          color:#20334e !important;
+          -webkit-text-fill-color:#20334e !important;
+          border:1px solid #cfd8e8 !important;
+          font-weight:800 !important;
+          box-shadow:var(--wa-student-shadow-raised) !important;
+          transition:transform .08s ease, box-shadow .08s ease, background .08s ease !important;
+        }
+        .stButton > button[kind="primary"]{
+          background:linear-gradient(180deg,#fbfaff 0%,#eeeaff 100%) !important;
+          color:#2c2850 !important;
+          -webkit-text-fill-color:#2c2850 !important;
+          border:1px solid #cbc2f5 !important;
+          box-shadow:
+            0 7px 14px rgba(91,72,176,.13),
+            inset 0 1px 0 rgba(255,255,255,.95) !important;
+        }
+        .stButton > button:hover,
+        .stDownloadButton > button:hover{
+          transform:translateY(-1px) !important;
+          background:linear-gradient(180deg,#ffffff 0%,#eef1f8 100%) !important;
+          border-color:#becbe0 !important;
+        }
+        .stButton > button:active,
+        .stDownloadButton > button:active{
+          transform:translateY(1px) !important;
+          box-shadow:
+            0 2px 5px rgba(55,70,100,.10),
+            inset 0 2px 5px rgba(65,75,110,.08) !important;
+        }
+        .stButton > button:disabled{
+          background:#f1f3f7 !important;
+          color:#9aa6b8 !important;
+          -webkit-text-fill-color:#9aa6b8 !important;
+          border-color:#dde3ec !important;
+          box-shadow:none !important;
+          opacity:1 !important;
+        }
+        .stButton > button *,
+        .stDownloadButton > button *{
+          color:inherit !important;
+          -webkit-text-fill-color:inherit !important;
+        }
+
+        .card{padding:1.25rem 1.4rem !important;margin:.9rem 0 !important;}
+        .totalbox{
+          padding:1.35rem 1rem !important;
+          background:
+            radial-gradient(circle at 85% 15%,rgba(196,178,255,.23),transparent 34%),
+            rgba(255,255,255,.90) !important;
+        }
+        .totalnum{color:#6045d9 !important;font-size:2.55rem !important;font-weight:900 !important;}
+        .cardtitle,.scorebar-value,.scorebar-label{color:#243651 !important;}
+        .score{color:#6045d9 !important;}
+        .desc-en{color:#425571 !important;}
+        .desc-zh,.meta{color:#73839a !important;}
+        .scorechart{padding:1.5rem 1rem 1rem !important;}
+        .scorebar-track{border-bottom-color:#dce4ef !important;}
+        .scorebar-fill{
+          opacity:.86 !important;
+          box-shadow:0 5px 12px rgba(44,59,98,.09) !important;
+        }
+
+        [data-testid="stAlert"]{
+          border-radius:16px !important;
+          border:1px solid rgba(207,217,233,.95) !important;
+          box-shadow:0 6px 18px rgba(58,75,120,.06) !important;
+        }
+        [data-testid="stAlert"] *{
+          color:#263a56 !important;
+          -webkit-text-fill-color:#263a56 !important;
+        }
+
+        hr{
+          border-color:rgba(194,205,221,.72) !important;
+          margin:1.7rem 0 !important;
+        }
+
+        @media (prefers-color-scheme:dark){
+          :root, html, body, .stApp{color-scheme:light !important;}
+          html, body, .stApp,
+          [data-testid="stAppViewContainer"],
+          [data-testid="stMain"]{
+            background:
+              radial-gradient(circle at 92% 5%, rgba(193,168,255,.24) 0, rgba(193,168,255,0) 26%),
+              radial-gradient(circle at 8% 82%, rgba(143,229,215,.20) 0, rgba(143,229,215,0) 28%),
+              linear-gradient(180deg,#edf2ff 0%,#f5f8ff 47%,#eefbf8 100%) !important;
+            color:#10233f !important;
+          }
+        }
+
+        @media (max-width:640px){
+          .block-container{
+            padding-top:.9rem !important;
+            padding-left:1rem !important;
+            padding-right:1rem !important;
+          }
+          .wa-hero-icon{
+            width:64px !important;
+            height:64px !important;
+            border-radius:18px !important;
+          }
+          .wa-hero-icon svg{width:32px !important;height:32px !important;}
+          .wa-hero-title{font-size:1.8rem !important;}
+          .wa-hero-subtitle{font-size:.95rem !important;padding:0 .25rem;}
+          .taskbox,
+          .wa-requirements-card,
+          .card,
+          .totalbox,
+          .scorechart{border-radius:19px !important;}
+          .taskbox{padding:1.05rem 1.05rem !important;font-size:1rem !important;}
+          .wa-requirements-card{padding:1.05rem 1rem !important;}
+          .wa-section-title{font-size:1.12rem !important;margin-top:1.35rem !important;}
+          .wa-instruction,.wa-requirements{font-size:.97rem !important;}
+          .stButton > button,.stDownloadButton > button{min-height:3rem !important;}
+          .scorechart{gap:6px !important;padding:1.1rem .4rem .85rem !important;}
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     try:
         task = get_task(task_id)
     except Exception as e:
@@ -1057,7 +1512,18 @@ if task_id:
     else:
         st.markdown(
             """<div class="wa-hero">
-                <div class="wa-hero-icon">✍️</div>
+                <div class="wa-hero-icon" aria-hidden="true">
+                  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8.25 5.25H20.4L24.75 9.6V26.75H8.25V5.25Z"
+                          stroke="white" stroke-width="2.1" stroke-linejoin="round"/>
+                    <path d="M20 5.5V10H24.5"
+                          stroke="white" stroke-width="2.1" stroke-linejoin="round"/>
+                    <path d="M11.5 15H20.5M11.5 19H18.5"
+                          stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M10.9 24.1L12.1 20.9L21.55 11.45C22.25 10.75 23.4 10.75 24.1 11.45L24.55 11.9C25.25 12.6 25.25 13.75 24.55 14.45L15.1 23.9L11.9 25.1L10.9 24.1Z"
+                          fill="rgba(255,255,255,.28)" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                  </svg>
+                </div>
                 <div class="wa-hero-title">Writing Assessment</div>
                 <div class="wa-hero-subtitle">Follow the steps below to check your writing. Each student can submit only once.</div>
             </div>""",
@@ -1075,7 +1541,10 @@ if task_id:
         if task.get("requirements"):
             st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📝</span><span>Task Requirements</span></div>', unsafe_allow_html=True)
             req_html = html.escape(task["requirements"]).replace("\n", "<br>")
-            st.markdown(f'<div class="wa-requirements">{req_html}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="wa-requirements-card"><div class="wa-requirements">{req_html}</div></div>',
+                unsafe_allow_html=True
+            )
 
         if task.get("is_closed", False):
             st.warning("This task is closed. Submissions are no longer accepted.")
@@ -1093,11 +1562,64 @@ if task_id:
             student_name = st.text_input("👤 Student Name")
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">📷</span><span>Step 2. Upload your writing</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="wa-instruction">Take a clear photo of your writing and upload it here. Each student can upload only once.</div>', unsafe_allow_html=True)
-        uploaded = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png", "webp"])
+        st.markdown('<div class="wa-instruction">Take a clear photo of your writing and upload it here. Wait until you see <b>Upload complete</b> before pressing Submit.</div>', unsafe_allow_html=True)
+
+        if "upload_widget_version" not in st.session_state:
+            st.session_state["upload_widget_version"] = 0
+
+        uploaded = st.file_uploader(
+            "Choose an image",
+            type=["jpg", "jpeg", "png", "webp"],
+            key=f"writing_upload_{st.session_state['upload_widget_version']}",
+        )
+
+        if uploaded is None:
+            st.info("Choose your photo and wait until the upload is complete.")
+        else:
+            # Hide Streamlit's native uploaded-file row completely after upload.
+            # This avoids the browser/Streamlit-specific blank or dark square icon.
+            st.markdown(
+                """<style>
+                [data-testid="stFileUploader"]{display:none !important;}
+                </style>""",
+                unsafe_allow_html=True,
+            )
+            size_mb = len(uploaded.getvalue()) / (1024 * 1024)
+            safe_name = html.escape(uploaded.name)
+            st.markdown(
+                f"""
+                <div class="wa-upload-card">
+                  <div class="wa-upload-doc" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 2.75h6.7L19.25 8.3V21.25H7V2.75Z"
+                            fill="#4F8CFF" opacity=".18"/>
+                      <path d="M13.5 2.75V8.5H19.25"
+                            stroke="#246BFD" stroke-width="1.8"
+                            stroke-linejoin="round"/>
+                      <path d="M7 2.75h6.5L19.25 8.5V21.25H7V2.75Z"
+                            stroke="#246BFD" stroke-width="1.8"
+                            stroke-linejoin="round"/>
+                      <path d="M9.5 12.25H16.5M9.5 15.5H16.5M9.5 18.75H14.5"
+                            stroke="#246BFD" stroke-width="1.6"
+                            stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="wa-upload-name">{safe_name}</div>
+                    <div class="wa-upload-size">{size_mb:.2f} MB · Upload complete</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button("Choose a different photo", use_container_width=False):
+                st.session_state["upload_widget_version"] += 1
+                st.rerun()
 
         st.markdown('<div class="wa-section-title"><span class="wa-section-icon">✅</span><span>Step 3. Submit your writing</span></div>', unsafe_allow_html=True)
-        if st.button("Submit for Assessment", type="primary", use_container_width=True):
+        if uploaded is None:
+            st.caption("Submit will be available after the photo upload is complete.")
+        if st.button("Submit for Assessment", type="primary", use_container_width=True, disabled=(uploaded is None)):
             if not seat_number.strip() or not student_id.strip() or not student_name.strip():
                 st.warning("Please enter your Seat No., Student ID, and Student Name.")
             elif not (seat_number.strip().isascii() and seat_number.strip().isdigit() and 1 <= len(seat_number.strip()) <= 2):
@@ -1187,13 +1709,12 @@ if task_id:
                     st.success("No clear grammar, spelling, punctuation, capitalization, or sentence structure errors were found.")
                 else:
                     for i, c in enumerate(corrections, 1):
-                        error_type = c.get("type", "Correction")
-                        original = c.get("original", "")
-                        correction = c.get("correction", "")
+                        original = c.get("original_sentence", c.get("original", ""))
+                        correction = c.get("corrected_sentence", c.get("correction", ""))
                         explanation_zh = c.get("explanation_zh", c.get("explanation", ""))
-                        st.markdown(f"**{i}. {error_type}**")
+                        st.markdown(f"**Sentence {i}**")
                         st.markdown(f"- **Original:** {original}")
-                        st.markdown(f"- **Correction:** {correction}")
+                        st.markdown(f"- **Corrected:** {correction}")
                         if explanation_zh:
                             st.markdown(f"- **說明：** {explanation_zh}")
                         st.write("")
