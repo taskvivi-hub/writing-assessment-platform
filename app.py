@@ -42,8 +42,8 @@ RUBRIC = {
             "任務所要求的內容在段落與全文層次皆組織良好。想法發展有邏輯，轉承有效，讀者能輕鬆理解指定的訊息或目的。"
         ),
         3: (
-            "The required task content is generally organized clearly. Sequencing and connections are appropriate, with only minor lapses in coherence while carrying out the assigned task.",
-            "任務所要求的內容整體組織大致清楚。內容順序與連結適當，在完成指定任務時僅有少數銜接不夠順暢之處。"
+            "The ideas actually presented are meaningfully developed and organized into a clear progression appropriate to the assigned task. Connections show how distinct ideas relate, with only minor lapses in coherence. A short repetitive statement with a warning is not sufficient evidence of this level.",
+            "實際呈現的想法有適當發展，並依指定任務形成清楚的論述進展；不同想法之間的關係明確，僅有少數連貫性問題。簡短重複的陳述加上一句提醒，不足以證明達到此程度。"
         ),
         2: (
             "Some organization of task-related content is evident, but sequencing, paragraphing, or transitions are inconsistent. Off-topic or loosely connected ideas sometimes weaken the assigned message.",
@@ -78,8 +78,8 @@ RUBRIC = {
             "能一致地達成指定的溝通目的，並符合指定文類預期的組織、格式、語氣與慣例。文章非常適合預定讀者與情境。"
         ),
         3: (
-            "Generally fulfills the assigned communicative purpose and follows the expected organization, format, and tone of the specified genre. Minor inconsistencies do not interfere with the intended communication.",
-            "大致能達成指定的溝通目的，並符合指定文類預期的組織、格式與語氣。少數不一致之處不影響原本的溝通目的。"
+            "Generally achieves the assigned communicative purpose with sufficiently informative content for the intended reader, while following the expected format, tone, and conventions of the specified genre. Minor inconsistencies do not undermine communication.",
+            "能以對預期讀者而言足夠且有用的資訊，大致達成指定溝通目的，並符合文類的格式、語氣與慣例；少數不一致之處不妨礙溝通。"
         ),
         2: (
             "Shows partial control of the assigned genre and purpose. Format, tone, organization, audience awareness, or task relevance is inconsistent and sometimes weakens communication.",
@@ -571,6 +571,10 @@ CONTENT & TASK FULFILLMENT
 - 3 vs 4: Choose 4 only when ALL important requirements are fully addressed with clearly stronger, specific, sufficiently developed support. Adequate completion alone is 3.
 
 ORGANIZATION & COHERENCE
+- Assess the organization of ideas that the student actually developed. Do not pretend missing task ideas exist, and do not mechanically copy the Content score.
+- A logical order of two or three short sentences, a heading, or a concluding warning is only basic sequencing; it does not establish adequately developed coherence.
+- Repeated restatements of one idea are not meaningful progression. Look for distinct developed points and intelligible relationships among them, relative to the assigned task and response length.
+- A short response may still earn 3 if it demonstrates genuine, clear development and relationships; do not impose a fixed length or paragraph-count requirement.
 - 1 vs 2: Choose 2 only when some recognizable organization of task-related ideas is present. If ideas are fragmented, poorly sequenced, or insufficiently connected for the assigned purpose, choose 1.
 - 2 vs 3: Choose 3 only when the overall sequence and connections are generally clear and appropriate, with only MINOR lapses. A few connectors such as "First" or "Also" do not by themselves justify 3. If sequencing, paragraphing, or transitions are noticeably inconsistent or ideas are loosely connected, choose 2.
 - 3 vs 4: Choose 4 only when organization is consistently strong at both paragraph and whole-text levels, idea progression is logical, and transitions are effective throughout. Generally clear organization is 3.
@@ -581,6 +585,9 @@ LANGUAGE USE
 - 3 vs 4: Choose 4 only when language shows clearly stronger range, precision, accuracy, and appropriacy, with only minor errors. Sufficient but ordinary control is 3.
 
 GENRE & PROFESSIONAL APPROPRIACY
+- Evaluate whether the text gives the intended audience enough relevant, usable communication to substantially achieve the assigned genre purpose. A title, warning tone, or appropriate salutation alone is not sufficient.
+- Distinguish communicative success from the Content checklist: do not mechanically copy the Content score, but a merely skeletal message that does not substantially perform the genre's purpose normally merits 2 rather than 3.
+- A brief response can still earn 3 when its communicative purpose is substantially achieved with appropriate audience awareness and conventions.
 - 1 vs 2: Choose 2 when the student shows partial awareness of the assigned communicative purpose and genre, even if format, tone, organization, or audience awareness is inconsistent. Choose 1 when awareness of the assigned genre/purpose is very limited or the response is largely inappropriate for the expected audience, format, tone, or conventions.
 - 2 vs 3: Choose 3 when the response generally carries out the assigned communicative purpose and generally follows the expected organization, format, and tone, with only minor inconsistencies. Do NOT lower Genre merely because Language Use contains grammar errors; avoid double-penalizing language errors unless they directly prevent the genre purpose or audience appropriacy.
 - 3 vs 4: Choose 4 only when genre control is consistent and the writing is clearly well suited to the intended audience and context throughout. Generally appropriate genre performance is 3.
@@ -594,7 +601,7 @@ For Content = 3:
 - A response can earn Content = 3 even when its Organization, Language Use, or Genre scores are only 2.
 
 For Organization = 3:
-- Ideas must be arranged in a generally clear and coherent sequence across the response.
+- Ideas must show genuine progression and meaningful connections across the response, beyond repetition or a simple problem-then-warning sequence.
 - Basic connectors alone (for example, "First" or "Also") do not justify 3 if ideas are mostly listed, loosely connected, or weakly developed.
 - If coherence is basic, inconsistent, or frequently awkward, Organization should normally be 2.
 
@@ -604,12 +611,12 @@ For Language Use = 3:
 - Repeated basic errors such as subject-verb agreement, missing articles/prepositions, malformed clauses, fragments, run-ons, incorrect word forms, or unnatural sentence patterns normally keep Language Use at 2 or below, even when the meaning remains understandable.
 
 For Genre & Professional Appropriacy = 3:
-- The response must generally sustain the expected communicative purpose, tone, audience awareness, organization, and conventions of the assigned genre.
+- The response must substantially achieve the expected communicative purpose for its intended readers, with sufficient useful information, appropriate tone, audience awareness, and genre conventions.
 - A greeting, closing, title, or other surface feature alone does not justify 3.
 - If tone, phrasing, format, audience awareness, or genre conventions are noticeably inconsistent or weak, Genre should normally be 2.
 
 CALIBRATION PRINCIPLE
-A poor but on-task response may reasonably receive a pattern such as Content = 3 while Organization = 2, Language Use = 2, and Genre = 2. Do not let successful task completion inflate the other dimensions.
+A poor but on-task response may reasonably receive a pattern such as Content = 3 while Organization = 2, Language Use = 2, and Genre = 2. Equally, a partially completed task with repetitive, skeletal development should not earn Organization or Genre = 3 merely because its few sentences are understandable or its warning sounds appropriate. Do not let successful task completion inflate the other dimensions.
 
 HIGH-SCORE GATE: CHECK BEFORE ANY SCORE OF 4
 Before assigning 4 in any dimension, ask whether the response is clearly stronger than an adequate score-3 response for THIS task. If the answer is uncertain, assign 3 rather than 4.
