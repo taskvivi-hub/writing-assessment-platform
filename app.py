@@ -31,12 +31,12 @@ RUBRIC = {
             "回應主要的任務要求。內容與指定任務相關且有適當發展，並提供足夠的相關資訊，能夠完成此項任務。"
         ),
         2: (
-            "Addresses only part of the assigned task or develops required ideas unevenly. Important task content may be missing, weakly developed, repetitive, or only partly relevant.",
-            "僅回應部分指定任務，或對必要內容的發展不均。重要任務內容可能缺漏、發展不足、重複，或只有部分與任務相關。"
+            "Meaningfully addresses at least part of the assigned task, but one or more important requirements remain missing or insufficiently developed. There is some substantive task-related information beyond isolated statements or repeated claims.",
+            "對指定任務至少有部分具體回應，但仍缺少一項以上重要要求，或發展不充分；內容須有一定實質資訊，不能只有零碎陳述或重複主張。"
         ),
         1: (
-            "Does not adequately address the assigned task. The response is largely off-topic, minimal, or too incomplete to fulfill the required purpose.",
-            "未能充分回應指定任務。內容大多偏題、過少，或過於不完整，無法達成任務要求的目的。"
+            "Provides only isolated, skeletal, or extremely limited task-related statements, or is largely off-topic. Most essential task requirements are unmet, and there is too little meaningful development to fulfill the assigned purpose.",
+            "僅提供零碎、極簡或非常有限的相關陳述，或大多偏題；多數必要任務要求未完成，缺乏實質發展，無法達成指定目的。"
         )
     },
     "Organization & Coherence": {
@@ -507,13 +507,13 @@ DYNAMIC REQUIREMENT AUDIT (MANDATORY BEFORE CONTENT SCORING)
 - For each obligation, check whether the student's own response fulfills it meaningfully, partially, or not at all. Repeated descriptions of the same idea do not satisfy a request for distinct items.
 - Distinguish essential obligations from optional illustrations and minor supporting details. Do not assume every task needs examples, reasons, advice, or any fixed number of points.
 - Check the quality and sufficiency of development as well as coverage. Merely naming an item is not necessarily explaining it.
-- If an essential content obligation is missing or only superficially addressed, Content normally cannot exceed 2. A minor omission or uneven but meaningful development may still justify 3 if the main task is fulfilled. Do not mechanically subtract points per missing item.
+- If an essential content obligation is missing or only superficially addressed, Content normally cannot exceed 2. However, score 2 is NOT an automatic floor for mentioning the topic: a skeletal response that barely addresses the task may merit 1. A minor omission or uneven but meaningful development may still justify 3 if the main task is fulfilled. Do not mechanically subtract points per missing item.
 - Before finalizing Content 3 or 4, verify that the requirement audit supports successful completion of the task. If it does not, reconsider the score.
 
 WORD-COUNT POLICY (ALL TASKS)
 - When the teacher specifies a word-count range, its LOWER bound is the required minimum. The upper bound is guidance, not a penalty threshold.
 - NEVER deduct points merely because the student exceeds the stated maximum; sufficiently developed longer writing may receive 4.
-- When the response falls below the minimum, reflect the shortfall in Content & Task Fulfillment, taking into account its magnitude and whether the required ideas have been developed. A slight shortfall is different from a substantial one; do not apply an automatic fixed-point deduction.
+- When the response falls below the minimum, reflect the shortfall in Content & Task Fulfillment, taking into account its magnitude and whether the required ideas have been developed. If it is substantially below the minimum AND consists only of skeletal statements with most essential requirements missing, Content should ordinarily be 1 rather than 2. A slight shortfall is different from a substantial one; do not apply an automatic fixed-point deduction.
 - Word-count shortfall alone must not automatically reduce Organization, Language Use, or Genre. Judge those dimensions independently.
 - If no minimum word count is specified, do not invent one.
 
@@ -569,7 +569,7 @@ OFFICIAL RUBRIC BOUNDARY DECISIONS
 The OFFICIAL RUBRIC descriptors above remain the scoring authority. The rules below do NOT replace or rewrite them. Use these rules only to decide between two adjacent scores when the response sits near a boundary.
 
 CONTENT & TASK FULFILLMENT
-- 1 vs 2: Choose 2 only when there is meaningful response to at least part of the required task. If the response is largely off-topic, minimal, or too incomplete to serve the assigned purpose, choose 1.
+- 1 vs 2: Choose 1 when the response offers only a few isolated claims, repeated versions of one point, or generic advice, and most essential requirements remain unmet. Merely mentioning the topic, identifying one item without developing it, or adding a brief warning does NOT establish score 2. Choose 2 when the student meaningfully develops at least one essential component with substantive, relevant explanation or detail, even if other components are missing. Consider a severe shortfall below the specified minimum as additional evidence of skeletal development, not as an automatic numeric cutoff. A short but genuinely developed response must be judged on its actual substance.
 - 2 vs 3: Choose 3 only when the MAIN task requirements are addressed and there is enough relevant development to complete the task successfully. If important required content is missing, weakly developed, repetitive, or uneven, choose 2.
 - 3 vs 4: Choose 4 only when ALL important requirements are fully addressed with clearly stronger, specific, sufficiently developed support. Adequate completion alone is 3.
 
