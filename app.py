@@ -577,7 +577,7 @@ ORGANIZATION & COHERENCE
 - Assess the organization of ideas that the student actually developed. Do not pretend missing task ideas exist, and do not mechanically copy the Content score.
 - A logical order of two or three short sentences, a heading, or a concluding warning is only basic sequencing; it does not establish adequately developed coherence.
 - Repeated restatements of one idea are not meaningful progression. Look for distinct developed points and intelligible relationships among them, relative to the assigned task and response length.
-- A short response may still earn 3 if it demonstrates genuine, clear development and relationships; do not impose a fixed length or paragraph-count requirement.
+- A short response may still earn 3 if it demonstrates genuine, clear development and relationships; do not impose a fixed length or paragraph-count requirement. For an extremely skeletal response, do not mistake a sequence of isolated sentences for actual organization.
 - 1 vs 2: Choose 2 only when some recognizable organization of task-related ideas is present. If ideas are fragmented, poorly sequenced, or insufficiently connected for the assigned purpose, choose 1.
 - 2 vs 3: Choose 3 only when the overall sequence and connections are generally clear and appropriate, with only MINOR lapses. A few connectors such as "First" or "Also" do not by themselves justify 3. If sequencing, paragraphing, or transitions are noticeably inconsistent or ideas are loosely connected, choose 2.
 - 3 vs 4: Choose 4 only when organization is consistently strong at both paragraph and whole-text levels, idea progression is logical, and transitions are effective throughout. Generally clear organization is 3.
@@ -806,7 +806,14 @@ def audit_skeletal_content(client, model, task, transcription):
         "does not suffice. Do not require examples unless explicitly asked. "
         "This response is substantially shorter than the teacher's stated minimum; "
         "consider this as evidence but NOT as an automatic score rule. "
-        "Return ONLY JSON: {\"content_level\": 1} or {\"content_level\": 2}.\n\n"
+        "Also independently evaluate ORGANIZATION & COHERENCE: return organization_level 1 if "
+        "the response is just disconnected, repeated, or skeletal statements with no "
+        "meaningful development or relationships among ideas; return 2 if there is "
+        "recognizable basic organization of at least some distinct ideas. Do not "
+        "automatically equate Organization with Content: a developed but off-topic "
+        "response can still be organized. "
+        "Return ONLY JSON with integer content_level (1 or 2) and "
+        "organization_level (1 or 2).\n\n"
         f"Task Title: {task.get('title', '')}\nGenre: {task.get('genre', '')}\n"
         f"Requirements: {task.get('requirements', '')}\n"
         f"Student response: {transcription}"
@@ -817,8 +824,10 @@ def audit_skeletal_content(client, model, task, transcription):
         raw = raw.strip("`").strip()
         if raw.lower().startswith("json"):
             raw = raw[4:].strip()
-    score = int(json.loads(raw)["content_level"])
-    return score if score in (1, 2) else None
+    audit = json.loads(raw)
+    content_level = int(audit["content_level"])
+    organization_level = int(audit["organization_level"])
+    return (content_level, organization_level) if content_level in (1, 2) and organization_level in (1, 2) else None
 
 
 def assess(uploaded_file, task):
@@ -913,9 +922,15 @@ def assess(uploaded_file, task):
         if (min_words and min_words > 0 and words_written < 0.6 * min_words
                 and result["scores"]["Content & Task Fulfillment"] == 2):
             try:
-                audited_level = audit_skeletal_content(client, model, task, transcription)
-                if audited_level == 1:
-                    result["scores"]["Content & Task Fulfillment"] = 1
+                audited_levels = audit_skeletal_content(client, model, task, transcription)
+                if audited_levels:
+                    content_level, organization_level = audited_levels
+                    if content_level == 1:
+                        result["scores"]["Content & Task Fulfillment"] = 1
+                    # Only adjust Organization if the audit independently finds
+                    # skeletal sequencing, not merely because Content is low.
+                    if organization_level == 1:
+                        result["scores"]["Organization & Coherence"] = 1
             except Exception:
                 # Never block a valid submission solely because the secondary audit failed.
                 pass
