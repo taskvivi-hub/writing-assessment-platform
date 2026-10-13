@@ -784,6 +784,43 @@ def verify_vivian_stamp(uploaded_file):
     return data.get("stamp_verified") is True
 
 
+def minimum_required_words(requirements):
+    """Extract an explicit minimum from common English word-count instructions."""
+    text = str(requirements or "")
+    ranges = re.findall(r"(?<!\d)(\d{1,4})\s*[-–—~]\s*(\d{1,4})\s*(?:words?\b|word\b)", text, re.I)
+    if ranges:
+        return min(int(a) for a, b in ranges if int(a) <= int(b))
+    minimum = re.search(r"(?:at least|minimum(?: of)?|no fewer than)\s*(\d{1,4})\s*words?\b", text, re.I)
+    return int(minimum.group(1)) if minimum else None
+
+
+def audit_skeletal_content(client, model, task, transcription):
+    """Independent task-specific 1-vs-2 audit; only used for severe underlength cases."""
+    prompt = (
+        "Independently audit CONTENT & TASK FULFILLMENT only, for the student's ACTUAL writing. "
+        "Interpret the teacher's task-specific essential obligations, not a generic checklist. "
+        "A score of 1 means only skeletal, isolated or repetitive statements, with most "
+        "essential obligations unmet and no meaningful development. A score of 2 requires "
+        "at least one essential component to be meaningfully developed with substantive, "
+        "task-relevant explanation or detail. Mentioning a topic or generic warning alone "
+        "does not suffice. Do not require examples unless explicitly asked. "
+        "This response is substantially shorter than the teacher's stated minimum; "
+        "consider this as evidence but NOT as an automatic score rule. "
+        "Return ONLY JSON: {\"content_level\": 1} or {\"content_level\": 2}.\n\n"
+        f"Task Title: {task.get('title', '')}\nGenre: {task.get('genre', '')}\n"
+        f"Requirements: {task.get('requirements', '')}\n"
+        f"Student response: {transcription}"
+    )
+    response = client.responses.create(model=model, input=[{"role": "user", "content": prompt}], timeout=120)
+    raw = response.output_text.strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`").strip()
+        if raw.lower().startswith("json"):
+            raw = raw[4:].strip()
+    score = int(json.loads(raw)["content_level"])
+    return score if score in (1, 2) else None
+
+
 def assess(uploaded_file, task):
     api_key = secret_or_env("OPENAI_API_KEY")
     model = secret_or_env("OPENAI_MODEL", "gpt-5.6-luna")
@@ -867,6 +904,21 @@ def assess(uploaded_file, task):
             if score not in (1, 2, 3, 4):
                 raise ValueError(f"Invalid score for {dim}")
             result["scores"][dim] = score
+
+        # A separate model pass resolves the known 1-vs-2 inflation in extremely
+        # short submissions. It is task-specific, not a hard-coded word-count penalty.
+        # Run only for a severe shortfall and an initial Content score of 2.
+        min_words = minimum_required_words(task.get("requirements", ""))
+        words_written = len(re.findall(r"\b[A-Za-z]+(?:['’][A-Za-z]+)?\b", transcription))
+        if (min_words and min_words > 0 and words_written < 0.6 * min_words
+                and result["scores"]["Content & Task Fulfillment"] == 2):
+            try:
+                audited_level = audit_skeletal_content(client, model, task, transcription)
+                if audited_level == 1:
+                    result["scores"]["Content & Task Fulfillment"] = 1
+            except Exception:
+                # Never block a valid submission solely because the secondary audit failed.
+                pass
 
         # Verify every original sentence against the transcription.
         # Any correction for wording the student did not write is discarded.
