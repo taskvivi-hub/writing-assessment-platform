@@ -5,6 +5,7 @@ import html
 import hashlib
 import time
 import re
+import difflib
 from datetime import date
 from io import BytesIO
 
@@ -429,6 +430,41 @@ def response_requires_zero(transcription):
     return cjk_chars >= 8 and cjk_chars > latin_letters
 
 
+def response_is_task_requirements_copy(transcription, requirements):
+    """Return True only when the student's response is essentially copied from Task Requirements.
+
+    This guardrail is intentionally conservative. Reusing a few necessary task words or phrases
+    should NOT trigger a zero. The zero-score rule applies only when most of the student's actual
+    response is copied from the teacher-provided Task Requirements with little original writing.
+    """
+    def _tokens(value):
+        return re.findall(r"[a-z0-9]+", (value or "").lower())
+
+    response_tokens = _tokens(transcription)
+    requirement_tokens = _tokens(requirements)
+
+    if len(response_tokens) < 5 or len(requirement_tokens) < 5:
+        return False
+
+    response_norm = " ".join(response_tokens)
+    requirement_norm = " ".join(requirement_tokens)
+
+    # Exact or near-exact copying of a requirement sentence / block.
+    if response_norm in requirement_norm:
+        return True
+
+    matcher = difflib.SequenceMatcher(
+        None, requirement_tokens, response_tokens, autojunk=False
+    )
+    matched_words = sum(block.size for block in matcher.get_matching_blocks())
+    copied_fraction = matched_words / max(1, len(response_tokens))
+
+    # Treat as "copy only" when at least 80% of the student's response is traceable
+    # to the Task Requirements and there is very little additional original writing.
+    little_original_writing = len(response_tokens) <= len(requirement_tokens) + 12
+    return copied_fraction >= 0.80 and little_original_writing
+
+
 def build_prompt(task):
     requirements = task.get("requirements", "").strip()
     rubric_text = rubric_for_prompt()
@@ -463,6 +499,21 @@ GENERALIZATION RULE
 - If the teacher creates a different task later, all four scores must automatically be recalibrated to that new Task Title, Task Requirements, and Genre / Writing Type.
 - A response that would be strong for a different assignment can still receive a low score here if it does not perform THIS assignment.
 
+DYNAMIC REQUIREMENT AUDIT (MANDATORY BEFORE CONTENT SCORING)
+- Read the CURRENT Task Requirements and identify each distinct essential content obligation, including any requested number of distinct ideas, explanations, reasons, examples, recommendations, or comparisons ONLY when this task actually asks for them.
+- For each obligation, check whether the student's own response fulfills it meaningfully, partially, or not at all. Repeated descriptions of the same idea do not satisfy a request for distinct items.
+- Distinguish essential obligations from optional illustrations and minor supporting details. Do not assume every task needs examples, reasons, advice, or any fixed number of points.
+- Check the quality and sufficiency of development as well as coverage. Merely naming an item is not necessarily explaining it.
+- If an essential content obligation is missing or only superficially addressed, Content normally cannot exceed 2. A minor omission or uneven but meaningful development may still justify 3 if the main task is fulfilled. Do not mechanically subtract points per missing item.
+- Before finalizing Content 3 or 4, verify that the requirement audit supports successful completion of the task. If it does not, reconsider the score.
+
+WORD-COUNT POLICY (ALL TASKS)
+- When the teacher specifies a word-count range, its LOWER bound is the required minimum. The upper bound is guidance, not a penalty threshold.
+- NEVER deduct points merely because the student exceeds the stated maximum; sufficiently developed longer writing may receive 4.
+- When the response falls below the minimum, reflect the shortfall in Content & Task Fulfillment, taking into account its magnitude and whether the required ideas have been developed. A slight shortfall is different from a substantial one; do not apply an automatic fixed-point deduction.
+- Word-count shortfall alone must not automatically reduce Organization, Language Use, or Genre. Judge those dimensions independently.
+- If no minimum word count is specified, do not invent one.
+
 TASK-RELEVANCE GATE
 Classify the response against the CURRENT Teacher Settings first:
 - STRONGLY ON TASK: most or all current requirements are meaningfully addressed.
@@ -482,6 +533,12 @@ This is an ENGLISH writing assessment.
 - This 0-score rule overrides the normal 1-4 rubric because the student did not provide an English response to the assigned English writing task.
 - Do not apply this rule for an English response that only contains a few isolated Chinese words, names, labels, or necessary proper nouns.
 - Preserve the student's original language faithfully in transcription; do not translate it before deciding this rule.
+
+TASK-REQUIREMENTS-COPY OVERRIDE
+- If the student's submitted response merely copies or substantially reproduces the teacher-provided Task Requirements instead of producing an original response to the task, set ALL FOUR dimension scores to 0.
+- Apply this 0-score rule only when the submission is essentially the Task Requirements themselves with little or no original student writing.
+- Do NOT apply this rule merely because the student appropriately reuses necessary topic words, names, phrases, or wording from the task.
+- In the JSON output, set "task_requirements_copy_only" to true only when this override applies.
 
 ASSESSMENT RULES
 Evaluate exactly these four dimensions. Normally give an INTEGER score from 1 to 4 for each, except the language-of-response override above may require 0 for all four:
@@ -504,6 +561,29 @@ SCORING CALIBRATION
 - When deciding between 2 and 3, choose 3 only when the evidence shows adequate control of that specific dimension across most of the response. If performance is frequent, repeated, or noticeably weak in that dimension, choose 2.
 - When deciding between 3 and 4, choose 4 only when there is clear positive evidence of fuller development, stronger control, effective organization, and/or broader, more precise task-appropriate language as required by that dimension.
 - Do not automatically give the same score to all four dimensions. Judge each dimension separately, but always within the same task context.
+
+OFFICIAL RUBRIC BOUNDARY DECISIONS
+The OFFICIAL RUBRIC descriptors above remain the scoring authority. The rules below do NOT replace or rewrite them. Use these rules only to decide between two adjacent scores when the response sits near a boundary.
+
+CONTENT & TASK FULFILLMENT
+- 1 vs 2: Choose 2 only when there is meaningful response to at least part of the required task. If the response is largely off-topic, minimal, or too incomplete to serve the assigned purpose, choose 1.
+- 2 vs 3: Choose 3 only when the MAIN task requirements are addressed and there is enough relevant development to complete the task successfully. If important required content is missing, weakly developed, repetitive, or uneven, choose 2.
+- 3 vs 4: Choose 4 only when ALL important requirements are fully addressed with clearly stronger, specific, sufficiently developed support. Adequate completion alone is 3.
+
+ORGANIZATION & COHERENCE
+- 1 vs 2: Choose 2 only when some recognizable organization of task-related ideas is present. If ideas are fragmented, poorly sequenced, or insufficiently connected for the assigned purpose, choose 1.
+- 2 vs 3: Choose 3 only when the overall sequence and connections are generally clear and appropriate, with only MINOR lapses. A few connectors such as "First" or "Also" do not by themselves justify 3. If sequencing, paragraphing, or transitions are noticeably inconsistent or ideas are loosely connected, choose 2.
+- 3 vs 4: Choose 4 only when organization is consistently strong at both paragraph and whole-text levels, idea progression is logical, and transitions are effective throughout. Generally clear organization is 3.
+
+LANGUAGE USE
+- 1 vs 2: Choose 2 when limited or inaccurate language still communicates enough of the task that the intended meaning is generally recoverable. Choose 1 when language is too limited or errors are so frequent/serious that effective communication of the required content breaks down.
+- 2 vs 3: Choose 3 only when vocabulary and sentence structures are sufficient across MOST of the response and errors are not frequent enough to noticeably reduce clarity. If basic grammar, wording, spelling, punctuation, capitalization, or sentence-structure errors recur across many sentences, choose 2 even if the overall message can still be understood.
+- 3 vs 4: Choose 4 only when language shows clearly stronger range, precision, accuracy, and appropriacy, with only minor errors. Sufficient but ordinary control is 3.
+
+GENRE & PROFESSIONAL APPROPRIACY
+- 1 vs 2: Choose 2 when the student shows partial awareness of the assigned communicative purpose and genre, even if format, tone, organization, or audience awareness is inconsistent. Choose 1 when awareness of the assigned genre/purpose is very limited or the response is largely inappropriate for the expected audience, format, tone, or conventions.
+- 2 vs 3: Choose 3 when the response generally carries out the assigned communicative purpose and generally follows the expected organization, format, and tone, with only minor inconsistencies. Do NOT lower Genre merely because Language Use contains grammar errors; avoid double-penalizing language errors unless they directly prevent the genre purpose or audience appropriacy.
+- 3 vs 4: Choose 4 only when genre control is consistent and the writing is clearly well suited to the intended audience and context throughout. Generally appropriate genre performance is 3.
 
 ANTI-INFLATION CHECK: CHECK BEFORE ANY SCORE OF 3
 Before assigning 3 in any dimension, ask whether the response demonstrates ADEQUATE CONTROL of that dimension, not merely partial success.
@@ -557,7 +637,7 @@ For Genre = 4:
 
 DIMENSION CHECKS
 Content & Task Fulfillment:
-- Check every explicit Task Requirement.
+- Check every explicit Task Requirement, using the mandatory dynamic requirement audit and word-count policy above.
 - Merely mentioning the title, one keyword, or one isolated related detail does not count as meaningful task fulfillment.
 - If most required content is absent or replaced by unrelated content, score 1.
 
@@ -587,10 +667,11 @@ Before returning the JSON, verify:
 - For every score of 4, is there clear evidence that the performance is stronger than score 3, rather than merely complete or understandable?
 - Have simple listing, thin development, predictable organization, limited language range, or repeated noticeable errors prevented unjustified 4s?
 - Does Genre reflect the current assigned communicative purpose rather than generic paragraph-writing conventions?
+- Did Content reflect all essential requirements and any minimum-word-count shortfall without penalizing writing above the maximum?
 
 IMPORTANT TASK RULES
 - No half points.
-- Normal rubric scores are 1, 2, 3, or 4. Score 0 is reserved only for the language-of-response override when the response is predominantly not written in English.
+- Normal rubric scores are 1, 2, 3, or 4. Score 0 is reserved only for: (a) the language-of-response override, or (b) the task-requirements-copy override.
 - Evaluate only the writing the student is required to produce.
 - Some assignments may already provide fixed genre elements outside the student's response, such as a subject line, greeting, opening, closing, or signature.
 - Do NOT penalize a student for omitting any element that is not explicitly required in Task Requirements.
@@ -628,12 +709,13 @@ For each suggestion, provide:
 Do not provide a model essay.
 
 Return VALID JSON ONLY.
-The values "<score 0-4>" below are placeholders. Use 0 only when the language-of-response override applies; otherwise use 1-4.
+The values "<score 0-4>" below are placeholders. Use 0 only when the language-of-response override or task-requirements-copy override applies; otherwise use 1-4.
 
 {{
   "image_readable": true,
   "transcription": "faithful transcription",
   "english_response": true,
+  "task_requirements_copy_only": false,
   "scores": {{
     "Content & Task Fulfillment": "<score 0-4>",
     "Organization & Coherence": "<score 0-4>",
@@ -717,15 +799,23 @@ def assess(uploaded_file, task):
 
     transcription = result.get("transcription", "")
     model_says_english = result.get("english_response", True)
-    force_zero = (model_says_english is False) or response_requires_zero(transcription)
+    non_english_zero = (model_says_english is False) or response_requires_zero(transcription)
+    task_copy_zero = bool(result.get("task_requirements_copy_only", False)) or response_is_task_requirements_copy(
+        transcription, task.get("requirements", "")
+    )
+    force_zero = non_english_zero or task_copy_zero
 
     if force_zero:
-        result["english_response"] = False
+        result["zero_reason"] = "non_english" if non_english_zero else "task_requirements_copy"
+        result["english_response"] = not non_english_zero
+        result["task_requirements_copy_only"] = bool(task_copy_zero)
         result["scores"] = {dim: 0 for dim in RUBRIC}
         result["corrections"] = []
         result["content_organization_suggestions"] = []
     else:
+        result["zero_reason"] = ""
         result["english_response"] = True
+        result["task_requirements_copy_only"] = False
         for dim in RUBRIC:
             score = int(result["scores"][dim])
             if score not in (1, 2, 3, 4):
@@ -1693,8 +1783,12 @@ if task_id:
             for dim, levels in RUBRIC.items():
                 score = result["scores"][dim]
                 if score == 0:
-                    desc_en = "The response was not written predominantly in English, so this English writing assessment receives 0 for this dimension."
-                    desc_zh = "作答內容主要不是以英文書寫，因此本英文寫作評量此向度為 0 分。"
+                    if result.get("zero_reason") == "task_requirements_copy":
+                        desc_en = "The submitted response mainly reproduces the Task Requirements instead of providing an original response, so this dimension receives 0."
+                        desc_zh = "本次作答主要是在抄寫 Task Requirements，未提供原創的任務作答，因此此向度為 0 分。"
+                    else:
+                        desc_en = "The response was not written predominantly in English, so this English writing assessment receives 0 for this dimension."
+                        desc_zh = "作答內容主要不是以英文書寫，因此本英文寫作評量此向度為 0 分。"
                 else:
                     desc_en, desc_zh = levels[score]
                 st.markdown(
@@ -1705,7 +1799,9 @@ if task_id:
                     unsafe_allow_html=True
                 )
 
-            if not result.get("english_response", True):
+            if result.get("zero_reason") == "task_requirements_copy":
+                st.info("This submission mainly copies the Task Requirements. Please write your own response to the task.")
+            elif not result.get("english_response", True):
                 st.info("This response was not written predominantly in English. Please complete the assigned task in English.")
             else:
                 st.divider()
